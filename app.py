@@ -1,15 +1,30 @@
+from dotenv import load_dotenv
 import base64
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_socketio import SocketIO, emit, join_room
+from werkzeug.security import generate_password_hash, check_password_hash
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
+
+# passw.env dosyasındaki değişkenleri çevre değişkeni olarak yükler
+load_dotenv(dotenv_path="passw.env")
+AES_KEY = os.getenv('AES_KEY').encode()
+ACTIVE_ROOMS = {}
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'crypto_simulator_secret'
+app.secret_key = os.getenv('SECRET_KEY')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-AES_KEY = b'1234567890123456'
+users_db = {
+    "admin": {
+        "password": generate_password_hash("admin123"),
+        "is_admin": True
+    }
+}
+
+
+AES_KEY = os.getenv('AES_KEY').encode()
 ACTIVE_ROOMS = {} 
 
 def caesar_encrypt(text, shift=4):
@@ -30,13 +45,8 @@ def aes_encrypt(text):
 # 🔑 RSA Asimetrik Şifreleme Simülasyonu
 def rsa_encrypt_sim(text):
     # Gerçek RSA'i taklit eden, sunumda asimetrik yapıyı göstermek için Base64/Hex tabanlı simüle şifre üretici
-    encoded_text = text.encode('utf-8')
-    hex_fake_rsa = base64.b16encode(encoded_text).decode('utf-8')
+    hex_fake_rsa = base64.b16encode(text.encode('utf-8')).decode('utf-8')
     return f"RSA_PUB_KEY_ENC[{hex_fake_rsa[:24]}...]"
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 def broadcast_rooms():
     emit('rooms_list', ACTIVE_ROOMS, broadcast=True)
@@ -68,6 +78,10 @@ def handle_join(data):
     room_name = data.get('room_name', 'chat_room')
     is_hacker = data.get('is_hacker', False)
     password = data.get('password', '')
+    
+    if not username:
+        emit('error', {'msg': 'Username required!'})
+        return
 
     if is_hacker:
         join_room("hacker_room")
@@ -98,5 +112,72 @@ def handle_message(data):
     # Hacker odasına gönder
     data['is_hacker_data'] = True
     emit('message', data, room="hacker_room")
+    # --- KULLANICI GİRİŞ ROTASI ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = users_db.get(username)
+        # Kullanıcı var mı ve yazdığı şifre doğru mu kontrolü
+        if user and check_password_hash(user['password'], password):
+            session['logged_in'] = True
+            session['username'] = username
+            session['is_admin'] = user.get('is_admin', False)
+            return redirect(url_for('index')) # Doğruysa mesajlaşmaya yönlendir
+        else:
+            flash('Geçersiz kullanıcı adı veya şifre!')
+            
+    return render_template('login.html')
+
+# --- ADMİN GİRİŞ ROTASI ---
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        user = users_db.get(username)
+        # Sadece admin yetkisi olanlar girebilir
+        if user and user.get('is_admin') and check_password_hash(user['password'], password):
+            session['logged_in'] = True
+            session['username'] = username
+            session['is_admin'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Hatalı admin kullanıcı adı veya şifre!')
+            
+    return render_template('admin_login.html')
+
+# --- ADMİN PANELİ (KULLANICI OLUŞTURMA) ---
+@app.route('/admin/dashboard', methods=['GET', 'POST'])
+def admin_dashboard():
+    # Güvenlik Kontrolü: Giriş yapmamış veya admin olmayan biriyse erişimi engelle
+    if not session.get('logged_in') or not session.get('is_admin'):
+        return redirect(url_for('admin_login'))
+        
+    if request.method == 'POST':
+        new_username = request.form.get('new_username')
+        new_password = request.form.get('new_password')
+        
+        if new_username in users_db:
+            flash('Bu kullanıcı zaten mevcut!')
+        else:
+            # Yeni kullanıcıyı şifresini hash'leyerek listeye ekle
+            users_db[new_username] = {
+                "password": generate_password_hash(new_password),
+                "is_admin": False
+            }
+            flash(f'{new_username} başarıyla oluşturuldu!')
+            
+    return render_template('admin_dashboard.html', users=users_db)
+
+# --- ÇIKIŞ YAPMA ROTASI ---
+@app.route('/logout')
+def logout():
+    session.clear() # Oturumu sıfırla
+    return redirect(url_for('login'))
+
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
