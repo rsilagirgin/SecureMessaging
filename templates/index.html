@@ -108,16 +108,21 @@
 </head>
 <body>
 
-    <div class="top-navbar">
-        <div class="nav-left">
+   <div class="top-navbar">
+        <div class="nav-left" onclick="confirmMainPageReturn()" style="cursor: pointer;" title="Return to Lobby">
             <div class="lock-logo">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 28px; height: 28px;"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
             </div>
             <div class="nav-title">Secure Messaging Simulator</div>
         </div>
-        <div class="nav-right hidden" id="nav-modes">
-            <button class="mode-btn active" id="secure-mode-btn" disabled>🔒 Secure Chat</button>
+        
+        <!-- 🎯 Sağ Bölüm: Durum Yazısı, Hacker View ve Sağ Hizalı Exit Butonu -->
+        <div class="nav-right hidden" id="nav-modes" style="display: flex; align-items: center; gap: 15px;">
+            <span class="status-label" id="secure-mode-status" style="color: #4ade80; font-weight: 700; font-size: 0.95rem; letter-spacing: 0.5px;">🔒 Secure Chat Line Active</span>
             <button class="mode-btn hacker-trigger" id="hacker-mode-btn" onclick="enableHackerMode()">🕵️ Hacker View</button>
+            <button type="button" id="exit-room-btn" onclick="exitCurrentRoom()" style="background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.9rem;">
+                🚪 Exit Room
+            </button>
         </div>
     </div>
 
@@ -128,8 +133,19 @@
             <div id="step-identity" class="step-container">
                 <div id="identity-error" class="hidden"></div>
                 
-                <label for="username">User Name:</label>
-                <input type="text" id="username" placeholder="Enter your username..." autocomplete="off" required>
+                <!-- ❌ ESKİ USER NAME GİRİŞİNİ SİLİP YERİNE BUNU YAPIŞTIR -->
+                   <div style="display: flex; gap: 12px; margin-bottom: 10px;">
+    <div style="flex: 1;">
+        <label for="firstname">First Name:</label>
+        <input type="text" id="firstname" placeholder="e.g. Sıla" autocomplete="off" required>
+    </div>
+    <div style="flex: 1;">
+      <!-- ✅ 138. Satırın Doğru Hali -->
+    <label for="lastname">Last Name:</label>
+        <!-- value niteliğinin olmadığından ve placeholder'ın temiz olduğundan emin olalım -->
+       <input type="text" id="lastname" placeholder="e.g. Girgin" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" required>
+    </div>
+</div>
                 
                 <div class="avatar-selection-wrapper">
                     <label>Select Your Avatar:</label>
@@ -214,31 +230,57 @@
 
         </div>
 
-        <div id="chat-screen" class="hidden">
-            <div class="chat-header-wrapper">
-                <h3 id="room-title">Secure Chat Line</h3>
-                <div class="room-pin-container">
-                    <div id="room-pin-display" class="room-pin-badge">Key: ••••••••</div>
-                    <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
-                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                    </button>
-                </div>
+        <!-- CHAT SCREEN BÖLÜMÜNÜ BUNUNLA DEĞİŞTİR -->
+<div id="chat-screen" class="hidden">
+    <div class="chat-header-wrapper">
+        <h3 id="room-title">Secure Chat Line</h3>
+        
+        <!-- 🆕 GÖRÜNÜM DEĞİŞTİRME SEKMELERİ -->
+        <div class="view-switcher-zone" id="view-switcher-wrapper">
+            <button type="button" class="view-tab active" id="view-clean-btn" onclick="switchChatView('clean')">💬 Plain Text View</button>
+            <button type="button" class="view-tab" id="view-cipher-btn" onclick="switchChatView('cipher')">🔒 Ciphertext View Only</button>
+        </div>
+
+        <!-- 🆕 YENİ EXIT BUTTON VE KEY ALANI -->
+        <div style="display: flex; align-items: center; gap: 12px;">
+           
+
+            <div class="room-pin-container">
+                <div id="room-pin-display" class="room-pin-badge">Key: ••••••••</div>
+                <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
+                    <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 20px; height: 20px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                </button>
             </div>
+        </div>
+    </div>
+    
+    <!-- 🆕 js ile görünümü kontrol etmek için chat-box'a varsayılan olarak show-clean sınıfı veriyoruz -->
+    <div id="chat-box" class="show-clean"></div>
+    <div class="chat-input-area" id="input-area-wrapper">
+        <div id="message-input" class="rich-input-container" contenteditable="true"></div>
+        
+        <div class="input-actions-column">
+            <div class="text-tools">
+                <button type="button" class="tool-btn" id="bold-btn">B</button>
+                <button type="button" class="tool-btn" id="italic-btn">I</button>
+                <button type="button" class="tool-btn" id="underline-btn">U</button>
+            </div>
+            <button type="button" id="send-btn">Send</button>
+        </div>
+    </div>
+</div>
+<!-- 🚨 ÖZEL ANASAYFAYA DÖNÜŞ MODAL PENCERESİ -->
+    <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: #1e293b; border: 2px solid #3b82f6; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">🚪</div>
+            <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 700;">Return to Main Page?</h3>
+            <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 24px 0;">Are you sure you want to log out and return to the main entry page?</p>
             
-            <div id="chat-box"></div>
-            <div class="chat-input-area" id="input-area-wrapper">
-                <div id="message-input" class="rich-input-container" contenteditable="true"></div>
-                
-                <div class="input-actions-column">
-                    <div class="text-tools">
-                        <button type="button" class="tool-btn" id="bold-btn">B</button>
-                        <button type="button" class="tool-btn" id="italic-btn">I</button>
-                        <button type="button" class="tool-btn" id="underline-btn">U</button>
-                    </div>
-                    <button type="button" id="send-btn">Send</button>
-                </div>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeCustomModal()" style="flex: 1; background: #334155; color: #cbd5e1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Cancel</button>
+                <button type="button" onclick="proceedToMainPage()" style="flex: 1; background: #2563eb; color: #ffffff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Yes, Logout</button>
             </div>
         </div>
     </div>
@@ -301,6 +343,25 @@
             return "[Şifre Çözülemedi - Geçersiz Anahtar]";
         }
     }
+
+    // 🆕 SEKMELER ARASI GEÇİŞ MOTORU
+    function switchChatView(viewType) {
+    const chatBox = document.getElementById('chat-box');
+    const cleanBtn = document.getElementById('view-clean-btn');
+    const cipherBtn = document.getElementById('view-cipher-btn');
+    
+    if (viewType === 'clean') {
+        chatBox.classList.remove('show-cipher');
+        chatBox.classList.add('show-clean');
+        cleanBtn.classList.add('active');
+        cipherBtn.classList.remove('active');
+    } else {
+        chatBox.classList.remove('show-clean');
+        chatBox.classList.add('show-cipher');
+        cipherBtn.classList.add('active');
+        cleanBtn.classList.remove('active');
+    }
+}
     // --- ŞİFRELEME MOTORU BURADA BİTTİ ---
 
     const socket = io();
@@ -320,20 +381,49 @@
     let currentRoomAlgo = ""; 
     let isPasswordVisible = false;
 
-    function goToChoiceStep() {
-        const usernameInput = document.getElementById('username').value.trim();
-        const identityErr = document.getElementById('identity-error');
-        if(!usernameInput) {
-            identityErr.className = "lobby-error-msg";
-            identityErr.innerText = "Please enter a Username before moving forward!";
-            identityErr.classList.remove('hidden');
-            return;
-        }
-        identityErr.classList.add('hidden');
-        globalUsername = usernameInput;
+    // ✅ YENİ PROFiL GEÇİŞ FONKSİYONU
+// ✅ KİLİTLENMEYİ ÖNLEYEN, GARANTİLİ GEÇİŞ FONKSİYONU
+function goToChoiceStep() {
+    let firstName = document.getElementById('firstname').value.trim();
+    let lastName = document.getElementById('lastname').value.trim();
+    const identityErr = document.getElementById('identity-error');
+    
+    if(!firstName || !lastName) {
+        identityErr.className = "lobby-error-msg";
+        identityErr.innerText = "Please enter both First Name and Last Name!";
+        identityErr.classList.remove('hidden');
+        return;
+    }
+    identityErr.classList.add('hidden');
+    
+    try {
+        // İlk harfi büyütüp kalanını küçültüyoruz (Güvenli yöntem)
+        let firstChar = firstName.charAt(0).toLocaleUpperCase('tr-TR');
+        let restOfName = firstName.slice(1).toLocaleLowerCase('tr-TR');
+        firstName = firstChar + restOfName;
+        
+        // Soyadın sadece ilk harfi ve nokta
+        let lastChar = lastName.charAt(0).toLocaleUpperCase('tr-TR');
+        const shortLastName = lastChar + ".";
+        
+        // Sonuç: "Sıla G."
+        globalUsername = `${firstName} ${shortLastName}`; 
+        
+        // Ekranları değiştir
+        document.getElementById('step-identity').classList.add('hidden');
+        document.getElementById('step-choice').classList.remove('hidden');
+        
+    } catch (error) {
+        console.error("İsim formatlama hatası:", error);
+        // Eğer tarayıcı yerel lokali desteklemiyorsa düz fallback yapıya geçsin, uygulama çökmesin:
+        firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+        const shortLastName = lastName.charAt(0).toUpperCase() + ".";
+        globalUsername = `${firstName} ${shortLastName}`;
+        
         document.getElementById('step-identity').classList.add('hidden');
         document.getElementById('step-choice').classList.remove('hidden');
     }
+}
 
     function goToIdentityStep() {
         document.getElementById('step-choice').classList.add('hidden');
@@ -404,21 +494,21 @@
         return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 
-    const gridContainer = document.getElementById('avatar-grid-container');
-    for (let i = 1; i <= 15; i++) {
-        const imgOpt = document.createElement('img');
-        imgOpt.src = `/static/avatars/${i}.jpg`; 
-        imgOpt.className = 'avatar-option';
-        imgOpt.setAttribute('data-avatar', i);
-        if (i === 1) imgOpt.classList.add('selected');
-        imgOpt.addEventListener('click', () => {
-            document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
-            imgOpt.classList.add('selected');
-            selectedAvatar = imgOpt.getAttribute('data-avatar');
-        });
-        gridContainer.appendChild(imgOpt);
-    }
-
+   // ✅ YERİNE GELECEK YENİ DÖNGÜ
+const gridContainer = document.getElementById('avatar-grid-container');
+for (let avatarId = 1; avatarId <= 15; avatarId++) {
+    const imgOpt = document.createElement('img');
+    imgOpt.src = `/static/avatars/${avatarId}.jpg`; 
+    imgOpt.className = 'avatar-option';
+    imgOpt.setAttribute('data-avatar', avatarId);
+    if (avatarId === 1) imgOpt.classList.add('selected');
+    imgOpt.addEventListener('click', () => {
+        document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+        imgOpt.classList.add('selected');
+        selectedAvatar = imgOpt.getAttribute('data-avatar');
+    });
+    gridContainer.appendChild(imgOpt);
+}
     socket.on('connect', () => { socket.emit('get_initial_rooms'); });
 
     socket.on('rooms_list', (rooms) => {
@@ -429,26 +519,36 @@
             container.innerHTML = '<div class="no-rooms">No active rooms found.</div>';
             return;
         }
-        keys.forEach(name => {
-            const div = document.createElement('div');
-            div.className = 'room-item';
-            div.innerHTML = `
-                <div><strong>Room Name:</strong> ${escapeHTML(name)}</div>
-                <div class="room-item-detail"><strong>Encryption Algorithm:</strong> ${rooms[name].algo.toUpperCase()}</div>
-            `;
-            if(currentSelectedRoom === name) div.classList.add('selected');
-            div.addEventListener('click', () => {
-                clearErrors();
-                document.querySelectorAll('.room-item').forEach(r => r.classList.remove('selected'));
-                div.classList.add('selected');
-                currentSelectedRoom = name;
-                currentRoomPIN = rooms[name].password; 
-                currentRoomAlgo = rooms[name].algo; 
-                document.getElementById('connect-password-area').classList.remove('hidden');
-            });
-            container.appendChild(div);
-        });
+       // 🔎 index.html içinde bu fonksiyonu bul ve click olayının içini güncelle:
+keys.forEach(name => {
+    const div = document.createElement('div');
+    div.className = 'room-item';
+    div.innerHTML = `
+        <div><strong>Room Name:</strong> ${escapeHTML(name)}</div>
+        <div class="room-item-detail"><strong>Encryption Algorithm:</strong> ${rooms[name].algo.toUpperCase()}</div>
+    `;
+    if(currentSelectedRoom === name) div.classList.add('selected');
+    
+    div.addEventListener('click', () => {
+        clearErrors();
+        document.querySelectorAll('.room-item').forEach(r => r.classList.remove('selected'));
+        div.classList.add('selected');
+        currentSelectedRoom = name;
+        currentRoomPIN = rooms[name].password; 
+        currentRoomAlgo = rooms[name].algo; 
+        
+        // 🆕 ODA SEÇİLDİĞİNDE ALGORİTMAYI OTOMATİK SEÇEN KISIM
+        // Kullanıcının decryption select kutusunu odanın algoritmasına eşitliyoruz
+        const algoSelectConnect = document.getElementById('algo-select-connect');
+        if (algoSelectConnect) {
+            algoSelectConnect.value = rooms[name].algo.toLowerCase();
+        }
+
+        document.getElementById('connect-password-area').classList.remove('hidden');
     });
+    container.appendChild(div);
+    });
+});
 
     joinBtn.addEventListener('click', () => {
         const roomName = document.getElementById('room-name-input').value.trim();
@@ -577,6 +677,84 @@
         document.getElementById('room-pin-display').innerText = "Key: ••••••••";
         isPasswordVisible = false;
     }
+    // 🚪 ODADAN ÇIKMA VE LOBİYE DÖNME MOTORU
+    function exitCurrentRoom() {
+        if (!currentSelectedRoom) return;
+
+        // 1. Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
+        socket.emit('leave', { 
+            username: globalUsername, 
+            room_name: currentSelectedRoom 
+        });
+
+        // 2. Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
+        document.getElementById('chat-screen').classList.add('hidden');
+        document.getElementById('nav-modes').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+        
+        // Doğrudan "Create / Connect" butonlarının olduğu panele paslıyoruz
+        document.getElementById('step-identity').classList.add('hidden');
+        document.getElementById('panel-create').classList.add('hidden');
+        document.getElementById('panel-connect').classList.add('hidden');
+        document.getElementById('step-choice').classList.remove('hidden');
+
+        // 3. İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
+        document.getElementById('chat-box').innerHTML = "";
+
+        // 4. Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
+        currentSelectedRoom = "";
+        currentRoomPIN = "";
+        currentRoomAlgo = "";
+        
+        // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
+        if (isHacker) {
+            isHacker = false;
+            document.getElementById('main-container').classList.remove('hacker-mode-active');
+            document.getElementById('input-area-wrapper').classList.remove('hidden');
+            document.getElementById('view-switcher-wrapper').classList.remove('hidden');
+            document.getElementById('hacker-mode-btn').classList.remove('active');
+            const secureStatus = document.getElementById('secure-mode-status');
+            if (secureStatus) {
+                secureStatus.innerText = "🔒 Secure Chat Line Active";
+                secureStatus.style.color = ""; 
+            }
+        }
+    }
+    // 🏠 LOGOYA BASILDIĞINDA ANASAYFAYA DÖNÜŞ VE SIFIRLAMA MOTORU
+    function confirmMainPageReturn() {
+        const response = confirm("Are you sure you want to log out and return to the main entry page?");
+        if (response) {
+            // Eğer bir odadaysak önce soket bağlantısını temizce koparalım
+            if (currentSelectedRoom) {
+                socket.emit('leave', { username: globalUsername, room_name: currentSelectedRoom });
+            }
+            // Sayfayı tamamen ilk haline yeniler, lobi kimlik giriş ekranına tertemiz atar
+            window.location.reload();
+        }
+    }
+    // 🏠 MODAL PENCERESİNİ EKİRANIN ORTASINDA AÇAR
+    function confirmMainPageReturn() {
+        const modal = document.getElementById('custom-confirm-modal');
+        if (modal) {
+            modal.style.display = 'flex'; // Modalı görünür yapar ve ortalar
+        }
+    }
+
+    // ❌ İPTAL BUTONUNA BASILDIĞINDA KAPATIR
+    function closeCustomModal() {
+        const modal = document.getElementById('custom-confirm-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // ✅ ONAY BUTONUNA BASILDIĞINDA SIFIRLAR VE GÖNDERİR
+    function proceedToMainPage() {
+        if (currentSelectedRoom) {
+            socket.emit('leave', { username: globalUsername, room_name: currentSelectedRoom });
+        }
+        window.location.reload();
+    }
 
     function enableHackerMode() {
         if(isHacker) return;
@@ -588,48 +766,72 @@
         document.getElementById('main-container').classList.add('hacker-mode-active');
         document.getElementById('room-title').innerText = "🚨 WIRE TAPPING LOGS (RAW TRAFFIC)";
         document.getElementById('room-pin-display').innerText = "Key: UNKNOWN";
-        document.getElementById('secure-mode-btn').classList.remove('active');
+       const secureStatus = document.getElementById('secure-mode-status');
+if (secureStatus) {
+    secureStatus.innerText = "⚠️ Line Compromised / Intercepting";
+    secureStatus.style.color = "#ef4444"; /* Sadece yazı rengini kırmızı yapar */
+    secureStatus.style.background = "none"; /* Kutu oluşmasını engeller */
+    secureStatus.style.border = "none";     /* Çerçeve oluşmasını engeller */
+}
         document.getElementById('hacker-mode-btn').classList.add('active');
         document.getElementById('input-area-wrapper').classList.add('hidden');
         document.getElementById('chat-box').innerHTML = "";
+        // enableHackerMode fonksiyonunun en altına ekle:
+        document.getElementById('view-switcher-wrapper').classList.add('hidden');
         socket.emit('join', { username: globalUsername, is_hacker: true, avatar: selectedAvatar });
     }
-
+    // 🆕 Arka planda çakışmayı önleyen benzersiz ismi tarayıcıda güncelliyoruz
+    socket.on('join_confirmed', (data) => {
+    globalUsername = data.unique_username; // Örn: "Sıla G._2" oldu. Böylece tarayıcı kendi kimliğini tam ayırt edecek.
+});
     // 🔒 GÜVENLİ VE UYUMLU DEŞİFRE KARŞILAYICISI
-    socket.on('message', async (data) => {
-        if (isHacker && !data.is_hacker_data) return;
-        if (!isHacker && data.is_hacker_data) return;
-        let chatBox = document.getElementById('chat-box');
-        messageCounter++;
-        let isMe = (data.username === globalUsername);
-        let messageClass = isMe ? 'my-msg' : 'other-msg';
-        let msgAvatar = data.avatar || "1";
-        let avatarHtml = `<img src="/static/avatars/${msgAvatar}.jpg" class="chat-avatar" alt="avatar">`;
-        
-        // Sunucudan gelen ham veriyi tarayıcıda deşifre ediyoruz
-        let decryptedOriginal = "[Şifre Çözülemedi]";
-        if (!isHacker) {
-            decryptedOriginal = await decryptData(data.encrypted, data.iv);
-        }
-        
-        let messageContent = "";
-        if (isHacker) {
-            messageContent = `<strong>Line Sniffer:</strong><div class="encrypted-text">[TRAFFIC ALERT - ${data.algo}]: ${escapeHTML(data.encrypted)}</div>`;
+   // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
+// 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
+// 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
+// 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
+socket.on('message', async (data) => {
+    if (isHacker && !data.is_hacker_data) return;
+    if (!isHacker && data.is_hacker_data) return;
+    let chatBox = document.getElementById('chat-box');
+    messageCounter++;
+    let isMe = (data.username === globalUsername);
+    let messageClass = isMe ? 'my-msg' : 'other-msg';
+    let msgAvatar = data.avatar || "1";
+    let avatarHtml = `<img src="/static/avatars/${msgAvatar}.jpg" class="chat-avatar" alt="avatar">`;
+    
+    let decryptedOriginal = "[Şifre Çözülemedi]";
+    if (!isHacker) {
+        decryptedOriginal = await decryptData(data.encrypted, data.iv);
+    }
+    
+    let displayUsername = data.username;
+    if (displayUsername) {
+        displayUsername = displayUsername.replace(/_\d+$/, '').replace(/\.$/, '');
+    }
+    
+    // 🕒 ARTIK SAATİ BACKEND'DEN GELEN VERİDEN ÇEKİYORUZ!
+    // Eğer backend'den anlık bir hata payıyla boş gelirse diye "00:00" fallback'i koyduk.
+    const messageTime = data.time || "00:00";
+    const timeHtml = `<span class="message-time">${messageTime}</span>`;
+    
+    let messageContent = "";
+    if (isHacker) {
+        messageContent = `<strong>Line Sniffer:</strong><div class="encrypted-text">[TRAFFIC ALERT - ${data.algo}]: ${escapeHTML(data.encrypted)}</div>${timeHtml}`;
+    } else {
+        if (isMe) {
+            messageContent = `${avatarHtml}<strong>${escapeHTML(displayUsername)}:</strong> <span class="user-text-content">${decryptedOriginal}</span><div class="encrypted-text encrypted-text-zone">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>${timeHtml}`;
         } else {
-            if (isMe) {
-                messageContent = `${avatarHtml}<strong>${escapeHTML(data.username)}:</strong> ${decryptedOriginal}<div class="encrypted-text">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>`;
+            let systemMatch = (data.algo.toLowerCase() === currentRoomAlgo.toLowerCase());
+            if (systemMatch) {
+                messageContent = `${avatarHtml}<strong>${escapeHTML(displayUsername)}:</strong> <span class="user-text-content">${decryptedOriginal}</span><div class="encrypted-text encrypted-text-zone">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>${timeHtml}`;
             } else {
-                let systemMatch = (data.algo.toLowerCase() === currentRoomAlgo.toLowerCase());
-                if (systemMatch) {
-                    messageContent = `${avatarHtml}<strong>${escapeHTML(data.username)}:</strong> <span>${decryptedOriginal}</span><div class="encrypted-text">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>`;
-                } else {
-                    messageContent = `${avatarHtml}<strong>${escapeHTML(data.username)}:</strong> <span style="color: #dc2626; font-weight: bold;">[❌ DECRYPTION FAILED: Key Mismatch]</span><div class="encrypted-text">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>`;
-                }
+                messageContent = `${avatarHtml}<strong>${escapeHTML(displayUsername)}:</strong> <span class="user-text-content" style="color: #dc2626; font-weight: bold;">[❌ DECRYPTION FAILED: Key Mismatch]</span><div class="encrypted-text encrypted-text-zone">[${data.algo} Raw Data]: ${escapeHTML(data.encrypted)}</div>${timeHtml}`;
             }
         }
-        chatBox.innerHTML += `<div class="msg-wrapper ${messageClass}"><div class="msg-item">${messageContent}</div></div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
+    }
+    chatBox.innerHTML += `<div class="msg-wrapper ${messageClass}"><div class="msg-item">${messageContent}</div></div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+});
 </script>
 </body>
 </html>

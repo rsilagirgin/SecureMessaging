@@ -497,3 +497,74 @@ input:focus, select:focus {
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Basılma efekti */
     transform: translateY(1px);
 }
+
+/* ==========================================================================
+   🆕 DİNAMİK KRİPTO / NORMAL GEÇİŞ SEKMELERİ STİLLERİ
+   ========================================================================== */
+.view-switcher-zone {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    gap: 4px;
+}
+
+.view-tab {
+    background: transparent;
+    border: none;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-tab:hover {
+    color: #0f172a;
+}
+
+.view-tab.active {
+    background: #ffffff;
+    color: #2563eb;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* 🎯 GÖRÜNÜM FİLTRELEME MANTIĞI */
+
+/* Temiz Görünüm Modu: Şifreli blokları tamamen gizle */
+#chat-box.show-clean .encrypted-text-zone {
+    display: none !important;
+}
+
+/* Sadece Şifreli Görünüm Modu: Kullanıcı metinlerini gizle, şifreli bloğu göster */
+#chat-box.show-cipher .user-text-content {
+    display: none !important;
+}
+#chat-box.show-cipher .encrypted-text-zone {
+    display: block !important;
+    margin-top: 0px !important; /* Başlık altındaki boşluğu sıfırla */
+}
+
+/* Mesaj kutusunun ana kapsayıcısı */
+.message-box {
+    position: relative; /* Saati bu kutuya göre konumlandırmak için şart */
+    padding: 10px 15px 20px 15px; /* Alttan biraz fazla boşluk (20px) bırakıyoruz ki saat metnin üstüne binmesin */
+    background-color: #e1ffc7; /* Örnek yeşil tonu (gönderen için) */
+    border-radius: 8px;
+    margin-bottom: 10px;
+    max-width: 60%;
+    word-wrap: break-word;
+}
+
+/* Sağ alt köşedeki saat formatı */
+.message-time {
+    position: absolute;
+    bottom: 4px;
+    right: 8px;
+    font-size: 0.75rem;
+    color: #666;
+    user-select: none; /* Kullanıcı mesajı seçerken saatin seçilmesini engeller */
+}
