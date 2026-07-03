@@ -3,7 +3,14 @@
    ========================================================================== */
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #f8fafc; /* Temiz, hafif gri-beyaz profesyonel arka plan */
+    background-color: #f8fafc;
+    background-image:
+        linear-gradient(45deg, rgba(30, 58, 138, 0.035) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(30, 58, 138, 0.035) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, rgba(30, 58, 138, 0.035) 75%),
+        linear-gradient(-45deg, transparent 75%, rgba(30, 58, 138, 0.035) 75%);
+    background-size: 40px 40px;
+    background-position: 0 0, 0 20px, 20px -20px, -20px 0px;
     color: #0f172a; 
     margin: 0;
     padding: 0;
@@ -45,7 +52,7 @@ body {
 .square-logo {
     width: 34px;
     height: 34px;
-    background-color: #2563eb; /* Canlı Teknoloji Mavisi */
+    background-color: #1e3a8a; /* Canlı Teknoloji Mavisi */
     border-radius: 6px;
     display: flex;
     justify-content: center;
@@ -177,7 +184,7 @@ input, select {
 }
 input:focus, select:focus {
     outline: none;
-    border-color: #2563eb;
+    border-color: #1e3a8a;
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
@@ -186,7 +193,7 @@ input:focus, select:focus {
     width: 100%; 
     padding: 16px; 
     border-radius: 10px; 
-    background: #2563eb; 
+    background: #1e3a8a; 
     color: #ffffff; 
     font-size: 1.1rem; 
     font-weight: 600; 
@@ -220,7 +227,8 @@ input:focus, select:focus {
 .msg-wrapper.other-msg { justify-content: flex-end; flex-direction: row-reverse; }
 
 .msg-item { 
-    padding: 14px 18px; 
+    position: relative;
+    padding: 14px 18px 22px 18px; 
     border-radius: 16px; 
     font-size: 1rem; 
     color: #1e293b; 
@@ -232,7 +240,7 @@ input:focus, select:focus {
 /* Sağ Balon (Senin Mesajların - Şık Kurumsal Mavi) */
 .my-msg .msg-item { 
     background: #eff6ff; 
-    border-right: 4px solid #2563eb; 
+    border-right: 4px solid #1e3a8a; 
     border-top-right-radius: 4px; 
 }
 
@@ -467,8 +475,8 @@ input:focus, select:focus {
 }
 .room-item.selected {
     background: #eff6ff;
-    border-color: #3b82f6;
-    color: #2563eb;
+    border-color: #1e3a8a;
+    color: #1e3a8a;
 }
 
 /* Sağ kutunun altındaki Connect butonu (Soldaki butonla aynı boyutta) */
@@ -492,8 +500,8 @@ input:focus, select:focus {
 /* Biçimlendirme araçları basılı (aktif) durum stili */
 .text-tools .tool-btn.active {
     background-color: #1e293b !important; /* Koyu arka plan */
-    color: #3b82f6 !important;            /* Mavi belirgin yazı/ikon rengi */
-    border-color: #3b82f6 !important;     /* Mavi çerçeve */
+    color: #1e3a8a !important;            /* Mavi belirgin yazı/ikon rengi */
+    border-color: #1e3a8a !important;     /* Mavi çerçeve */
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2); /* Basılma efekti */
     transform: translateY(1px);
 }
@@ -528,7 +536,7 @@ input:focus, select:focus {
 
 .view-tab.active {
     background: #ffffff;
-    color: #2563eb;
+    color: #1e3a8a;
     box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
@@ -561,10 +569,113 @@ input:focus, select:focus {
 
 /* Sağ alt köşedeki saat formatı */
 .message-time {
+    display: block;
     position: absolute;
     bottom: 4px;
-    right: 8px;
+    right: 12px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    user-select: none;/* Kullanıcı mesajı seçerken saatin seçilmesini engeller */
+}
+
+/* ==========================================================================
+   9. DETAYLI ODA LİSTESİ TASARIMI (Yeni Eklenen)
+   ========================================================================== */
+.room-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px !important; /* İç boşluğu biraz artırdık */
+}
+
+/* Üst Satır: Oda Adı ve Algoritma */
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.room-name-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.room-item.selected .room-name-text {
+    color: #1e3a8a;
+}
+
+/* Algoritma Rozeti (Badge) */
+.room-algo-badge {
     font-size: 0.75rem;
-    color: #666;
-    user-select: none; /* Kullanıcı mesajı seçerken saatin seçilmesini engeller */
+    background: #e2e8f0;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.room-item.selected .room-algo-badge {
+    background: #1e3a8a;
+    color: #ffffff;
+}
+
+/* Alt Satır: Kuran Kişi ve Saat Detayları */
+.room-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #64748b; /* Soft gri */
+    font-weight: 500;
+}
+
+.room-creator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+/* Kuran kişinin başına küçük bir ikon veya ayırt edici renk */
+.room-creator::before {
+    content: "👤"; 
+    font-size: 0.75rem;
+}
+
+.room-time-created {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.room-time-created::before {
+    content: "🕒";
+    font-size: 0.75rem;
+}
+
+/* 🚨 Hacker Modunda Oda Listesi Uyumu */
+.container.hacker-mode-active .room-item {
+    background: #111827;
+    border-color: #1f2937;
+    color: #94a3b8;
+}
+.container.hacker-mode-active .room-item:hover {
+    background: #1f2937;
+}
+.container.hacker-mode-active .room-name-text {
+    color: #f1f5f9;
+}
+.container.hacker-mode-active .room-algo-badge {
+    background: #374151;
+    color: #94a3b8;
+}
+.date-separator {
+    text-align: center;
+    margin: 18px 0;
+}
+.date-separator span {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 20px;
 }

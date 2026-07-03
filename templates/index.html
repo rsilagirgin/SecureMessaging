@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,8 +6,10 @@
     <title>Secure Messaging Simulator</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/caesar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/aes.js') }}"></script>
     <style>
-        .lock-logo { display: inline-block; vertical-align: middle; margin-right: 8px; color: #3b82f6; }
+        .lock-logo { display: inline-block; vertical-align: middle; margin-right: 8px; color: #1e3a8a; }
         #login-screen label { display: block; margin-top: 12px; margin-bottom: 4px; }
         .avatar-selection-wrapper { margin-top: 10px; margin-bottom: 10px; }
         
@@ -17,19 +20,19 @@
             max-height: 230px; 
             overflow-y: auto; 
             padding: 10px; 
-            background: #1e293b; 
+            background: #e2e8f0 ;
             border-radius: 8px; 
             justify-items: center; 
         }
         .avatar-option { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.2s ease; object-fit: cover; }
-        .avatar-option.selected { border-color: #3b82f6; transform: scale(1.05); }
+        .avatar-option.selected { border-color: #1e3a8a; transform: scale(1.05); }
         .chat-avatar { width: 32px; height: 32px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 8px; object-fit: cover; border: 1px solid #cbd5e1; }
         .room-pass-input { margin-top: 5px !important; margin-bottom: 10px !important; padding: 12px !important; text-align: center; font-weight: bold; }
         
         .password-generator-wrapper { display: flex; gap: 8px; align-items: center; }
-        .gen-btn { background: #2563eb; color: #ffffff; border: none; padding: 12px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: -5px; transition: background 0.2s; white-space: nowrap; }
-        .gen-btn:hover { background: #1d4ed8; }
-
+       .gen-btn { background: #1e40af; color: #ffffff; border: none; padding: 12px 14px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: -5px; transition: background 0.2s; white-space: nowrap; }
+.gen-btn:hover { background: #1e3a8a; }
+ 
         .chat-header-wrapper { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; }
         .chat-header-wrapper h3 { margin: 0 !important; text-align: left !important; }
         
@@ -37,11 +40,11 @@
         .room-pin-badge { color: #38bdf8; font-family: monospace; font-size: 0.95rem; font-weight: 700; letter-spacing: 1px; }
         .eye-btn { background: transparent; border: none; color: #94a3b8; cursor: pointer; padding: 0; display: flex; align-items: center; transition: color 0.15s; }
         .eye-btn:hover { color: #38bdf8; }
-
+ 
         .container.hacker-mode-active .room-pin-container { background: #450a0a !important; }
         .container.hacker-mode-active .room-pin-badge { color: #f87171 !important; }
         .container.hacker-mode-active .eye-btn:hover { color: #f87171 !important; }
-
+ 
         .lobby-error-msg {
             background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
             padding: 10px 14px; border-radius: 8px; font-size: 0.9rem;
@@ -49,7 +52,7 @@
         }
         .room-item-detail { font-size: 0.85rem; color: #64748b; margin-top: 4px; font-weight: 500; }
         .room-item.selected .room-item-detail { color: #60a5fa; }
-
+ 
         .step-container { width: 100%; box-sizing: border-box; }
         .choice-buttons-wrapper { display: flex; gap: 20px; margin-top: 20px; }
         .choice-btn {
@@ -58,27 +61,31 @@
             border-radius: 12px; cursor: pointer; transition: all 0.2s ease;
             display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
-        .choice-btn:hover { background: #e2e8f0; border-color: #2563eb; color: #2563eb; transform: translateY(-2px); }
+        .choice-btn:hover { background: #e2e8f0; border-color: #1e3a8a; color: #1e3a8a; transform: translateY(-2px); }
         .back-to-choice-btn {
             background: none; border: none; color: #64748b; cursor: pointer;
             font-weight: 600; font-size: 0.95rem; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; padding: 0;
         }
         .back-to-choice-btn:hover { color: #0f172a; }
         .next-btn {
-            width: 100%; padding: 16px; border-radius: 10px; background: #2563eb;
+            width: 100%; padding: 16px; border-radius: 10px; background: #1e3a8a;
             color: #ffffff; font-size: 1.1rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s;
         }
         .next-btn:hover { background: #1d4ed8; }
-
+ 
         .label-with-info { display: flex; align-items: center; gap: 6px; }
         .info-tooltip-trigger { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background-color: #94a3b8; color: #ffffff; border-radius: 50%; font-size: 0.75rem; font-weight: 700; cursor: help; position: relative; transition: background-color 0.2s; }
-        .info-tooltip-trigger:hover { background-color: #2563eb; }
+        .info-tooltip-trigger:hover { background-color: #1e3a8a; }
         .info-tooltip-trigger::after {
             content: "• Plain: Clear text, no security.\A• Caesar: Symmetric cipher shifting characters by a fixed step (+4).\A• AES: Industrial symmetric block cipher using a secure single key (CBC Mode).\A• RSA: Advanced asymmetric framework using Public Key to encrypt and Private Key to decrypt.";
             white-space: pre-wrap; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background-color: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 500; line-height: 1.4; width: 260px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); opacity: 0; visibility: hidden; pointer-events: none; z-index: 100; transition: all 0.2s ease; font-family: 'Inter', sans-serif; text-align: left;
-        }
+        }#create-room-info::after {
+    content: "Room Password: The secret key you set when creating the room. It's used to encrypt/decrypt messages, so everyone joining the room needs to know this password.\A Generate Room Password: Creates a random, strong password automatically; you can also type your own manually.";
+    white-space: pre-wrap; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%); background-color: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 500; line-height: 1.4; width: 260px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); opacity: 0; visibility: hidden; pointer-events: none; z-index: 100; transition: all 0.2s ease; font-family: 'Inter', sans-serif; text-align: left;
+}
+#create-room-info:hover::after { opacity: 1; visibility: visible; }
         .info-tooltip-trigger:hover::after { opacity: 1; visibility: visible; }
-
+ 
         /* 🆕 RICH TEXT MESSAGE AREA STYLES (style.css'e ezici ek stil) */
         .rich-input-container {
             flex: 1 !important; 
@@ -95,7 +102,7 @@
         }
         .rich-input-container:focus {
             outline: none;
-            border-color: #2563eb;
+            border-color: #1e3a8a;
             box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
         }
         /* placeholder emülasyonu */
@@ -104,10 +111,26 @@
             color: #94a3b8;
             pointer-events: none;
         }
+        /* 🆕 GÖRÜNÜM SEKME MOTORU CSS FİLTRELERİ */
+#chat-box.show-clean .encrypted-text-zone {
+    display: none !important; /* Plain Text modunda şifreli veriyi gizle */
+}
+ 
+#chat-box.show-clean .user-text-content {
+    display: inline !important;
+}
+ 
+#chat-box.show-cipher .user-text-content {
+    display: none !important; /* Ciphertext modunda çözülmüş metni gizle */
+}
+ 
+#chat-box.show-cipher .encrypted-text-zone {
+    display: block !important; /* Sadece ham şifreli paketi göster */
+}
     </style>
 </head>
 <body>
-
+ 
    <div class="top-navbar">
         <div class="nav-left" onclick="confirmMainPageReturn()" style="cursor: pointer;" title="Return to Lobby">
             <div class="lock-logo">
@@ -125,10 +148,10 @@
             </button>
         </div>
     </div>
-
+ 
     <div id="main-container" class="container">
         <div id="login-screen">
-            <h2>Simulator Lobby</h2>
+    <h2>Welcome to Secure Messaging</h2>
             
             <div id="step-identity" class="step-container">
                 <div id="identity-error" class="hidden"></div>
@@ -154,7 +177,7 @@
                 
                 <button type="button" class="next-btn" onclick="goToChoiceStep()">Next</button>
             </div>
-
+ 
             <div id="step-choice" class="step-container hidden">
                 <button type="button" class="back-to-choice-btn" onclick="goToIdentityStep()">← Back to Profile</button>
                 <h3 style="text-align: center; margin-bottom: 10px;">What would you like to do?</h3>
@@ -167,29 +190,31 @@
                     </button>
                 </div>
             </div>
-
+ 
             <div id="panel-create" class="step-container hidden">
                 <button type="button" class="back-to-choice-btn" onclick="backToChoice()">← Change Action</button>
                 <div class="lobby-box">
-                    <h3>Create a New Room</h3>
-                    <div id="left-error-container" class="hidden"></div>
-
+ <h3>Create a New Room</h3>
+    <div id="left-error-container" class="hidden"></div>
                     <label for="room-name-input">Room Name:</label>
                     <input type="text" id="room-name-input" placeholder="e.g. SecretRoom" autocomplete="off">
-
-                    <label for="room-pass-create">Room Password:</label>
-                    <div class="password-generator-wrapper">
-                        <input type="text" id="room-pass-create" class="room-pass-input" placeholder="Enter or Generate Key" autocomplete="off">
-                        <button type="button" class="gen-btn" onclick="generateRandomPassword()">🎲 Generate</button>
-                    </div>
-
+ 
+                    <div class="label-with-info">
+    <label for="room-pass-create">Room Password:</label>
+    <span class="info-tooltip-trigger" id="create-room-info" title="">?</span>
+</div>
+<div class="password-generator-wrapper">
+    <input type="text" id="room-pass-create" class="room-pass-input" placeholder="Enter or Generate Password" autocomplete="off">
+    <button type="button" class="gen-btn" onclick="generateRandomPassword()">🎲 Generate Room Password</button>
+</div>
+ 
                     <div class="label-with-info">
                         <label for="algo-select-create">Select Encryption Algorithm:</label>
                         <span class="info-tooltip-trigger" title="">?</span>
                     </div>
                     <select id="algo-select-create">
                         <option value="plain">Unencrypted (Plain Text)</option>
-                        <option value="caesar">Caesar Cipher (Shift: 4)</option>
+                        <option value="caesar">Caesar Cipher (Shifting)</option>
                         <option value="aes">AES</option>
                         <option value="rsa">RSA (Asymmetric Key)</option>
                     </select>
@@ -197,17 +222,17 @@
                     <button type="button" id="join-btn">Create and Launch Room</button>
                 </div>
             </div>
-
+ 
             <div id="panel-connect" class="step-container hidden">
                 <button type="button" class="back-to-choice-btn" onclick="backToChoice()">← Change Action</button>
                 <div class="lobby-box">
                     <h3>Available Online Rooms</h3>
                     <div id="right-error-container" class="hidden"></div>
-
+ 
                     <div class="rooms-list" id="rooms-list-container">
                         <div class="no-rooms">No active rooms found.</div>
                     </div>
-
+ 
                     <div id="connect-password-area" class="hidden">
                         <div class="label-with-info">
                             <label for="algo-select-connect">Your Decryption Algorithm:</label>
@@ -219,7 +244,7 @@
                             <option value="aes">AES</option>
                             <option value="rsa">RSA (Asymmetric Key)</option>
                         </select>
-
+ 
                         <label for="room-pass-join" style="color: #0f172a; margin-top: 10px;">Enter Selected Room Password:</label>
                         <input type="password" id="room-pass-join" class="room-pass-input" placeholder="••••••••" autocomplete="off">
                     </div>
@@ -227,9 +252,9 @@
                     <button type="button" id="connect-room-btn">Connect to the Room</button>
                 </div>
             </div>
-
+ 
         </div>
-
+ 
         <!-- CHAT SCREEN BÖLÜMÜNÜ BUNUNLA DEĞİŞTİR -->
 <div id="chat-screen" class="hidden">
     <div class="chat-header-wrapper">
@@ -240,11 +265,11 @@
             <button type="button" class="view-tab active" id="view-clean-btn" onclick="switchChatView('clean')">💬 Plain Text View</button>
             <button type="button" class="view-tab" id="view-cipher-btn" onclick="switchChatView('cipher')">🔒 Ciphertext View Only</button>
         </div>
-
+ 
         <!-- 🆕 YENİ EXIT BUTTON VE KEY ALANI -->
         <div style="display: flex; align-items: center; gap: 12px;">
            
-
+ 
             <div class="room-pin-container">
                 <div id="room-pin-display" class="room-pin-badge">Key: ••••••••</div>
                 <button type="button" class="eye-btn" onclick="togglePasswordVisibility()" title="Show/Hide Password">
@@ -273,77 +298,38 @@
 </div>
 <!-- 🚨 ÖZEL ANASAYFAYA DÖNÜŞ MODAL PENCERESİ -->
     <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: #1e293b; border: 2px solid #3b82f6; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="background: #1e293b; border: 2px solid #1e3a8a; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
             <div style="font-size: 2.5rem; margin-bottom: 12px;">🚪</div>
             <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 700;">Return to Main Page?</h3>
             <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 24px 0;">Are you sure you want to log out and return to the main entry page?</p>
             
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button type="button" onclick="closeCustomModal()" style="flex: 1; background: #334155; color: #cbd5e1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Cancel</button>
-                <button type="button" onclick="proceedToMainPage()" style="flex: 1; background: #2563eb; color: #ffffff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Yes, Logout</button>
+                <button type="button" onclick="proceedToMainPage()" style="flex: 1; background: #1e3a8a; color: #ffffff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Yes, Logout</button>
             </div>
         </div>
     </div>
-
+    <div id="exit-room-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #1e293b; border: 2px solid #1e3a8a; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🚪</div>
+        <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 700;">Exit Room?</h3>
+        <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 24px 0;">Are you sure you want to exit this room?</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" onclick="closeExitRoomModal()" style="flex: 1; background: #334155; color: #cbd5e1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Cancel</button>
+            <button type="button" onclick="confirmExitRoom()" style="flex: 1; background: #1e3a8a; color: #ffffff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Yes, Exit</button>
+        </div>
+    </div>
+</div>
+    
+ 
     <script>
-    const GIZLI_ANAHTAR = "staj_projesi_ozel_sifresi_123";
-
-    async function getAESKey(password) {
-        const enc = new TextEncoder();
-        const keyMaterial = await window.crypto.subtle.importKey(
-            "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]
-        );
-        return await window.crypto.subtle.deriveKey(
-            {
-                name: "PBKDF2",
-                salt: enc.encode("proje_tuzu_degeri"),
-                iterations: 100000,
-                hash: "SHA-256"
-            },
-            keyMaterial,
-            { name: "AES-GCM", length: 256 },
-            false,
-            ["encrypt", "decrypt"]
-        );
-    }
-
-    async function encryptData(plainText) {
-        const enc = new TextEncoder();
-        const key = await getAESKey(GIZLI_ANAHTAR);
-        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv }, key, enc.encode(plainText)
-        );
-        
-        // Tarayıcılar arası en güvenli Base64 dönüşüm yöntemi
-        const ciphertextBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(encrypted)));
-        const ivBase64 = btoa(String.fromCharCode.apply(null, iv));
-        
-        return { ciphertext: ciphertextBase64, iv: ivBase64 };
-    }
-
-    async function decryptData(ciphertextBase64, ivBase64) {
-        // Eksik veya hatalı veri akışında atob'un çökmesini engelliyoruz
-        if (!ciphertextBase64 || !ivBase64) {
-            console.error("Eksik şifreli veri veya IV saptandı.");
-            return "[Şifreli Veri Bozuk veya Eksik]";
-        }
-
-        try {
-            const key = await getAESKey(GIZLI_ANAHTAR);
-            const ciphertext = new Uint8Array(atob(ciphertextBase64).split("").map(c => c.charCodeAt(0)));
-            const iv = new Uint8Array(atob(ivBase64).split("").map(c => c.charCodeAt(0)));
-            
-            const decrypted = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: iv }, key, ciphertext
-            );
-            return new TextDecoder().decode(decrypted);
-        } catch (e) {
-            console.error("Deşifre hatası:", e);
-            return "[Şifre Çözülemedi - Geçersiz Anahtar]";
-        }
-    }
-
+    // Caesar shift ve AES CryptoKey nesnesi artık odaya katılınca
+    // sunucudan gelen verilerle dolduruluyor (bkz. join_confirmed handler'ı).
+    // caesarEncrypt/caesarDecrypt -> static/js/caesar.js
+    // deriveAESKey/encryptData/decryptData -> static/js/aes.js
+    let currentShift = null;
+    let currentAesKey = null;
+ 
     // 🆕 SEKMELER ARASI GEÇİŞ MOTORU
     function switchChatView(viewType) {
     const chatBox = document.getElementById('chat-box');
@@ -363,24 +349,25 @@
     }
 }
     // --- ŞİFRELEME MOTORU BURADA BİTTİ ---
-
+ 
     const socket = io();
     const joinBtn = document.getElementById('join-btn');
     const connectRoomBtn = document.getElementById('connect-room-btn');
     const sendBtn = document.getElementById('send-btn');
     const msgInput = document.getElementById('message-input'); 
-
+ 
     let globalUsername = "";
     let selectedAlgo = ""; 
     let selectedAvatar = "1";
     let isHacker = false; 
     let messageCounter = 0;
+    let lastShownDate = "";
     
     let currentSelectedRoom = ""; 
     let currentRoomPIN = ""; 
     let currentRoomAlgo = ""; 
     let isPasswordVisible = false;
-
+ 
     // ✅ YENİ PROFiL GEÇİŞ FONKSİYONU
 // ✅ KİLİTLENMEYİ ÖNLEYEN, GARANTİLİ GEÇİŞ FONKSİYONU
 function goToChoiceStep() {
@@ -389,11 +376,11 @@ function goToChoiceStep() {
     const identityErr = document.getElementById('identity-error');
     
     if(!firstName || !lastName) {
-        identityErr.className = "lobby-error-msg";
-        identityErr.innerText = "Please enter both First Name and Last Name!";
-        identityErr.classList.remove('hidden');
-        return;
-    }
+    identityErr.className = "lobby-error-msg";
+    identityErr.innerText = "Please provide your first and last name to continue.";
+    identityErr.classList.remove('hidden');
+    return;
+}
     identityErr.classList.add('hidden');
     
     try {
@@ -424,12 +411,12 @@ function goToChoiceStep() {
         document.getElementById('step-choice').classList.remove('hidden');
     }
 }
-
+ 
     function goToIdentityStep() {
         document.getElementById('step-choice').classList.add('hidden');
         document.getElementById('step-identity').classList.remove('hidden');
     }
-
+ 
     function selectLobbyAction(action) {
         document.getElementById('step-choice').classList.add('hidden');
         clearErrors();
@@ -439,14 +426,14 @@ function goToChoiceStep() {
             document.getElementById('panel-connect').classList.remove('hidden');
         }
     }
-
+ 
     function backToChoice() {
         document.getElementById('panel-create').classList.add('hidden');
         document.getElementById('panel-connect').classList.add('hidden');
         document.getElementById('step-choice').classList.remove('hidden');
         clearErrors();
     }
-
+ 
     function clearErrors() {
         document.getElementById('identity-error').classList.add('hidden');
         const leftErr = document.getElementById('left-error-container');
@@ -454,7 +441,7 @@ function goToChoiceStep() {
         if(leftErr) { leftErr.classList.add('hidden'); leftErr.innerHTML = ""; }
         if(rightErr) { rightErr.classList.add('hidden'); rightErr.innerHTML = ""; }
     }
-
+ 
     function showLobbyError(side, text) {
         clearErrors();
         const container = document.getElementById(`${side}-error-container`);
@@ -463,7 +450,7 @@ function goToChoiceStep() {
             container.innerText = text;
         }
     }
-
+ 
     function generateRandomPassword() {
         const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
         let newPassword = "";
@@ -473,7 +460,7 @@ function goToChoiceStep() {
         document.getElementById('room-pass-create').value = newPassword;
         clearErrors();
     }
-
+ 
     function togglePasswordVisibility() {
         const displayDiv = document.getElementById('room-pin-display');
         const eyeIcon = document.getElementById('eye-icon');
@@ -488,12 +475,12 @@ function goToChoiceStep() {
             isPasswordVisible = true;
         }
     }
-
+ 
     function escapeHTML(str) {
         if (!str) return "";
         return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
-
+ 
    // ✅ YERİNE GELECEK YENİ DÖNGÜ
 const gridContainer = document.getElementById('avatar-grid-container');
 for (let avatarId = 1; avatarId <= 15; avatarId++) {
@@ -510,7 +497,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
     gridContainer.appendChild(imgOpt);
 }
     socket.on('connect', () => { socket.emit('get_initial_rooms'); });
-
+ 
     socket.on('rooms_list', (rooms) => {
         const container = document.getElementById('rooms-list-container');
         container.innerHTML = "";
@@ -519,85 +506,108 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
             container.innerHTML = '<div class="no-rooms">No active rooms found.</div>';
             return;
         }
-       // 🔎 index.html içinde bu fonksiyonu bul ve click olayının içini güncelle:
-keys.forEach(name => {
-    const div = document.createElement('div');
-    div.className = 'room-item';
-    div.innerHTML = `
-        <div><strong>Room Name:</strong> ${escapeHTML(name)}</div>
-        <div class="room-item-detail"><strong>Encryption Algorithm:</strong> ${rooms[name].algo.toUpperCase()}</div>
-    `;
-    if(currentSelectedRoom === name) div.classList.add('selected');
-    
-    div.addEventListener('click', () => {
-        clearErrors();
-        document.querySelectorAll('.room-item').forEach(r => r.classList.remove('selected'));
-        div.classList.add('selected');
-        currentSelectedRoom = name;
-        currentRoomPIN = rooms[name].password; 
-        currentRoomAlgo = rooms[name].algo; 
-        
-        // 🆕 ODA SEÇİLDİĞİNDE ALGORİTMAYI OTOMATİK SEÇEN KISIM
-        // Kullanıcının decryption select kutusunu odanın algoritmasına eşitliyoruz
-        const algoSelectConnect = document.getElementById('algo-select-connect');
-        if (algoSelectConnect) {
-            algoSelectConnect.value = rooms[name].algo.toLowerCase();
-        }
-
-        document.getElementById('connect-password-area').classList.remove('hidden');
+ 
+        keys.forEach(name => {
+            const div = document.createElement('div');
+            div.className = 'room-item';
+ 
+            // 🕒 Backend'den gelen oluşturulma saatini ve kuran kişiyi güvenli fallback'lerle alıyoruz
+            // Backend'deki parametre isimlerine göre gerekirse 'room_time' veya 'owner' olarak güncelleyebilirsin.
+            const roomTime = rooms[name].time || "00:00";
+            const roomCreator = rooms[name].creator || "Unknown";
+            const roomAlgo = rooms[name].algo ? rooms[name].algo.toUpperCase() : "UNKNOWN";
+ 
+            // CSS şablonumuza tam oturan premium grid/satır yapısı
+            div.innerHTML = `
+    <div class="room-header">
+        <span class="room-name-text">Room: ${escapeHTML(name)}</span>
+        <span class="room-algo-badge">Encryption Algorithm:${escapeHTML(roomAlgo)}</span>
+    </div>
+    <div class="room-details">
+        <span class="room-creator">Room creator: ${escapeHTML(roomCreator)}</span>
+        <span class="room-time-created">Created at: ${escapeHTML(roomTime)}</span>
+    </div>
+    <div id="aes-key-container" style="display:none; margin-top:10px;">
+    <strong>🔑 AES-256 Session Key (Demo)</strong><br>
+    <code id="aes-key-text" style="word-break:break-all;"></code>
+</div>
+`;
+            
+            if(currentSelectedRoom === name) div.classList.add('selected');
+            
+            div.addEventListener('click', () => {
+                clearErrors();
+                document.querySelectorAll('.room-item').forEach(r => r.classList.remove('selected'));
+                div.classList.add('selected');
+                currentSelectedRoom = name;
+                // 🔒 Not: sunucu artık oda şifresini rooms_list'te GÖNDERMİYOR (güvenlik sızıntısıydı).
+                // currentRoomPIN artık kullanıcı "Connect to the Room"a bastığında,
+                // kendi yazdığı şifreden set ediliyor (bkz. connectRoomBtn handler'ı).
+                currentRoomAlgo = rooms[name].algo; 
+                
+                // Kullanıcının decryption select kutusunu odanın algoritmasına eşitleyen alan
+                const algoSelectConnect = document.getElementById('algo-select-connect');
+                if (algoSelectConnect) {
+                    algoSelectConnect.value = rooms[name].algo.toLowerCase();
+                }
+ 
+                document.getElementById('connect-password-area').classList.remove('hidden');
+            });
+            container.appendChild(div);
+        });
     });
-    container.appendChild(div);
-    });
-});
-
+ 
     joinBtn.addEventListener('click', () => {
         const roomName = document.getElementById('room-name-input').value.trim();
         const roomPass = document.getElementById('room-pass-create').value.trim();
         selectedAlgo = document.getElementById('algo-select-create').value;
-
+ 
         if (!roomName) { showLobbyError('left', "Please enter a Room Name!"); return; }
         if (!roomPass) { showLobbyError('left', "Please create or generate a Password!"); return; }
-
+ 
         currentSelectedRoom = roomName;
         currentRoomPIN = roomPass; 
         currentRoomAlgo = selectedAlgo;
-        socket.emit('create_room', { room_name: roomName, password: roomPass, algo: selectedAlgo });
+        socket.emit('create_room', { room_name: roomName, password: roomPass, algo: selectedAlgo, username: globalUsername });
     });
-
+ 
     socket.on('room_created_success', (data) => {
         enterChatView();
         socket.emit('join', { username: globalUsername, room_name: data.room_name, password: currentRoomPIN, avatar: selectedAvatar });
     });
-
+ 
     connectRoomBtn.addEventListener('click', () => {
         const roomPass = document.getElementById('room-pass-join').value.trim();
         const userSelectedAlgo = document.getElementById('algo-select-connect').value;
-
+ 
         if (!currentSelectedRoom) { showLobbyError('right', "Please select a room from the list!"); return; }
         if (userSelectedAlgo.toLowerCase() !== currentRoomAlgo.toLowerCase()) {
             showLobbyError('right', `❌ You are not using the room's encryption protocol! Please set your decryption algorithm to '${currentRoomAlgo.toUpperCase()}'.`);
             return;
         }
         if (!roomPass) { showLobbyError('right', "Please enter the room password!"); return; }
-
+ 
+        // 🔒 currentRoomPIN artık kullanıcının burada yazdığı şifreden geliyor
+        // (sunucudan sızdırılan bir değerden değil).
+        currentRoomPIN = roomPass;
         selectedAlgo = userSelectedAlgo; 
         socket.emit('join', { username: globalUsername, room_name: currentSelectedRoom, password: roomPass, avatar: selectedAvatar });
     });
-
+ 
     socket.on('error', (data) => {
         if (data.side) { showLobbyError(data.side, data.msg); } else { showLobbyError('right', data.msg); }
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('chat-screen').classList.add('hidden');
         document.getElementById('nav-modes').classList.add('hidden');
     });
-
+ 
     socket.on('status', (data) => {
         if(!document.getElementById('login-screen').classList.contains('hidden') && !isHacker) { enterChatView(); }
         let chatBox = document.getElementById('chat-box');
         chatBox.innerHTML += `<div class="status-msg-row"><div class="status-msg">${data.msg}</div></div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     });
-
+ 
     // Butonların aktiflik durumunu kontrol eden fonksiyon
     function updateToolButtonsState() {
         const tools = [
@@ -605,7 +615,7 @@ keys.forEach(name => {
             { id: 'italic-btn', command: 'italic' },
             { id: 'underline-btn', command: 'underline' }
         ];
-
+ 
         tools.forEach(tool => {
             const btn = document.getElementById(tool.id);
             if (btn) {
@@ -618,18 +628,18 @@ keys.forEach(name => {
             }
         });
     }
-
+ 
     function formatText(command) {
         document.execCommand(command, false, null);
         msgInput.focus();
         updateToolButtonsState(); // Biçimlendirme yapılınca buton durumlarını güncelle
     }
-
+ 
     // Mevcut event listener'lar
     document.getElementById('bold-btn').addEventListener('click', (e) => { e.preventDefault(); formatText('bold'); });
     document.getElementById('italic-btn').addEventListener('click', (e) => { e.preventDefault(); formatText('italic'); });
     document.getElementById('underline-btn').addEventListener('click', (e) => { e.preventDefault(); formatText('underline'); });
-
+ 
     // 🆕 Kullanıcı metin alanında yazarken veya tıkladığında imlecin olduğu yerin durumunu dinle
     msgInput.addEventListener('keyup', updateToolButtonsState);
     msgInput.addEventListener('click', updateToolButtonsState);
@@ -637,37 +647,58 @@ keys.forEach(name => {
     // Mesaj gönderildikten sonra butonların temizlenmesi için sendBtn click event'inin içine 
     // msgInput.innerHTML = ""; satırının hemen altına şunu ekleyebilirsin:
     // updateToolButtonsState();
-
+ 
     // 🔒 GÜVENLİ VE UYUMLU MESAJ GÖNDERİMİ
-    sendBtn.addEventListener('click', async () => {
-        let message = msgInput.innerHTML.trim();
-        
-        if (msgInput.innerText.trim() === "") message = "";
-
-        if (message !== "") {
-            // Mesajı daha lokaldeyken şifreliyoruz
-            const encryptedResult = await encryptData(message);
-
-            // Backend ve eski karşılayıcı altyapıyla tam uyumlu parametre isimleri
-            socket.emit('message', { 
-                username: globalUsername, 
-                encrypted: encryptedResult.ciphertext, // 'data.encrypted' arayan yapılar için eşitlendi
-                iv: encryptedResult.iv, 
-                algo: currentRoomAlgo, 
-                avatar: selectedAvatar, 
-                room_name: currentSelectedRoom 
-            });
-            msgInput.innerHTML = ""; 
+ sendBtn.addEventListener('click', async () => {
+ 
+    let message = msgInput.innerHTML.trim();
+ 
+    if (msgInput.innerText.trim() === "")
+        message = "";
+ 
+    if (message !== "") {
+ 
+        let encryptedResult;
+ 
+        // Algoritmaya göre şifreleme
+        if (currentRoomAlgo === "caesar") {
+ 
+            encryptedResult = {
+                ciphertext: caesarEncrypt(message, currentShift),
+                iv: null
+            };
+ 
+        } else {
+ 
+            // AES ve diğer algoritmalar
+            encryptedResult = await encryptData(message, currentAesKey);
+ 
         }
-    });
-
+ 
+        // Mesajı sunucuya gönder
+        socket.emit('message', {
+            username: globalUsername,
+            encrypted: encryptedResult.ciphertext,
+            iv: encryptedResult.iv,
+            algo: currentRoomAlgo,
+            avatar: selectedAvatar,
+            room_name: currentSelectedRoom
+        });
+ 
+        // Mesaj kutusunu temizle
+        msgInput.innerHTML = "";
+ 
+    }
+ 
+});
+ 
     msgInput.addEventListener("keydown", (event) => { 
         if (event.key === "Enter" && !event.shiftKey) { 
             event.preventDefault(); 
             sendBtn.click(); 
         } 
     });
-
+ 
     function enterChatView() {
         clearErrors();
         document.getElementById('login-screen').classList.add('hidden');
@@ -677,61 +708,60 @@ keys.forEach(name => {
         document.getElementById('room-pin-display').innerText = "Key: ••••••••";
         isPasswordVisible = false;
     }
-    // 🚪 ODADAN ÇIKMA VE LOBİYE DÖNME MOTORU
     function exitCurrentRoom() {
-        if (!currentSelectedRoom) return;
-
-        // 1. Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
-        socket.emit('leave', { 
-            username: globalUsername, 
-            room_name: currentSelectedRoom 
-        });
-
-        // 2. Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
-        document.getElementById('chat-screen').classList.add('hidden');
-        document.getElementById('nav-modes').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
-        
-        // Doğrudan "Create / Connect" butonlarının olduğu panele paslıyoruz
-        document.getElementById('step-identity').classList.add('hidden');
-        document.getElementById('panel-create').classList.add('hidden');
-        document.getElementById('panel-connect').classList.add('hidden');
-        document.getElementById('step-choice').classList.remove('hidden');
-
-        // 3. İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
-        document.getElementById('chat-box').innerHTML = "";
-
-        // 4. Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
-        currentSelectedRoom = "";
-        currentRoomPIN = "";
-        currentRoomAlgo = "";
-        
-        // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
-        if (isHacker) {
-            isHacker = false;
-            document.getElementById('main-container').classList.remove('hacker-mode-active');
-            document.getElementById('input-area-wrapper').classList.remove('hidden');
-            document.getElementById('view-switcher-wrapper').classList.remove('hidden');
-            document.getElementById('hacker-mode-btn').classList.remove('active');
-            const secureStatus = document.getElementById('secure-mode-status');
-            if (secureStatus) {
-                secureStatus.innerText = "🔒 Secure Chat Line Active";
-                secureStatus.style.color = ""; 
-            }
+    if (!currentSelectedRoom) return;
+    const modal = document.getElementById('exit-room-modal');
+    if (modal) modal.style.display = 'flex';
+}
+ 
+function closeExitRoomModal() {
+    const modal = document.getElementById('exit-room-modal');
+    if (modal) modal.style.display = 'none';
+}
+ 
+function confirmExitRoom() {
+    closeExitRoomModal();
+ 
+    // 1. Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
+    socket.emit('leave', { 
+        username: globalUsername, 
+        room_name: currentSelectedRoom 
+    });
+ 
+    // 2. Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
+    document.getElementById('chat-screen').classList.add('hidden');
+    document.getElementById('nav-modes').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+    
+    // Doğrudan "Create / Connect" butonlarının olduğu panele paslıyoruz
+    document.getElementById('step-identity').classList.add('hidden');
+    document.getElementById('panel-create').classList.add('hidden');
+    document.getElementById('panel-connect').classList.add('hidden');
+    document.getElementById('step-choice').classList.remove('hidden');
+ 
+    // 3. İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
+    document.getElementById('chat-box').innerHTML = "";
+ 
+    // 4. Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
+    currentSelectedRoom = "";
+    currentRoomPIN = "";
+    currentRoomAlgo = "";
+    currentAesKey = null;
+    
+    // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
+    if (isHacker) {
+        isHacker = false;
+        document.getElementById('main-container').classList.remove('hacker-mode-active');
+        document.getElementById('input-area-wrapper').classList.remove('hidden');
+        document.getElementById('view-switcher-wrapper').classList.remove('hidden');
+        document.getElementById('hacker-mode-btn').classList.remove('active');
+        const secureStatus = document.getElementById('secure-mode-status');
+        if (secureStatus) {
+            secureStatus.innerText = "🔒 Secure Chat Line Active";
+            secureStatus.style.color = ""; 
         }
     }
-    // 🏠 LOGOYA BASILDIĞINDA ANASAYFAYA DÖNÜŞ VE SIFIRLAMA MOTORU
-    function confirmMainPageReturn() {
-        const response = confirm("Are you sure you want to log out and return to the main entry page?");
-        if (response) {
-            // Eğer bir odadaysak önce soket bağlantısını temizce koparalım
-            if (currentSelectedRoom) {
-                socket.emit('leave', { username: globalUsername, room_name: currentSelectedRoom });
-            }
-            // Sayfayı tamamen ilk haline yeniler, lobi kimlik giriş ekranına tertemiz atar
-            window.location.reload();
-        }
-    }
+}
     // 🏠 MODAL PENCERESİNİ EKİRANIN ORTASINDA AÇAR
     function confirmMainPageReturn() {
         const modal = document.getElementById('custom-confirm-modal');
@@ -739,7 +769,7 @@ keys.forEach(name => {
             modal.style.display = 'flex'; // Modalı görünür yapar ve ortalar
         }
     }
-
+ 
     // ❌ İPTAL BUTONUNA BASILDIĞINDA KAPATIR
     function closeCustomModal() {
         const modal = document.getElementById('custom-confirm-modal');
@@ -747,7 +777,7 @@ keys.forEach(name => {
             modal.style.display = 'none';
         }
     }
-
+ 
     // ✅ ONAY BUTONUNA BASILDIĞINDA SIFIRLAR VE GÖNDERİR
     function proceedToMainPage() {
         if (currentSelectedRoom) {
@@ -755,7 +785,7 @@ keys.forEach(name => {
         }
         window.location.reload();
     }
-
+ 
     function enableHackerMode() {
         if(isHacker) return;
         globalUsername = "Line_Sniffer_" + Math.floor(Math.random() * 1000);
@@ -781,8 +811,22 @@ if (secureStatus) {
         socket.emit('join', { username: globalUsername, is_hacker: true, avatar: selectedAvatar });
     }
     // 🆕 Arka planda çakışmayı önleyen benzersiz ismi tarayıcıda güncelliyoruz
-    socket.on('join_confirmed', (data) => {
+    socket.on('join_confirmed', async (data) => {
     globalUsername = data.unique_username; // Örn: "Sıla G._2" oldu. Böylece tarayıcı kendi kimliğini tam ayırt edecek.
+    currentShift = data.shift;
+ 
+    // AES odasıysa: oda şifresi (currentRoomPIN) + sunucudan gelen
+    // odaya özel salt (data.aes_salt) ile AES-GCM anahtarını türet.
+    if (data.aes_salt) {
+        try {
+            currentAesKey = await deriveAESKey(currentRoomPIN, data.aes_salt);
+        } catch (e) {
+            console.error("AES anahtarı türetilemedi:", e);
+            currentAesKey = null;
+        }
+    } else {
+        currentAesKey = null;
+    }
 });
     // 🔒 GÜVENLİ VE UYUMLU DEŞİFRE KARŞILAYICISI
    // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
@@ -793,6 +837,11 @@ socket.on('message', async (data) => {
     if (isHacker && !data.is_hacker_data) return;
     if (!isHacker && data.is_hacker_data) return;
     let chatBox = document.getElementById('chat-box');
+    let msgDate = data.date || "";
+if (msgDate && msgDate !== lastShownDate) {
+    chatBox.innerHTML += `<div class="date-separator"><span>${escapeHTML(msgDate)}</span></div>`;
+    lastShownDate = msgDate;
+}
     messageCounter++;
     let isMe = (data.username === globalUsername);
     let messageClass = isMe ? 'my-msg' : 'other-msg';
@@ -800,9 +849,20 @@ socket.on('message', async (data) => {
     let avatarHtml = `<img src="/static/avatars/${msgAvatar}.jpg" class="chat-avatar" alt="avatar">`;
     
     let decryptedOriginal = "[Şifre Çözülemedi]";
-    if (!isHacker) {
-        decryptedOriginal = await decryptData(data.encrypted, data.iv);
+ 
+if (!isHacker) {
+ 
+    if (data.algo === "caesar") {
+ 
+        decryptedOriginal = caesarDecrypt(data.encrypted, currentShift);
+ 
+    } else {
+ 
+        decryptedOriginal = await decryptData(data.encrypted, data.iv, currentAesKey);
+ 
     }
+ 
+}
     
     let displayUsername = data.username;
     if (displayUsername) {
