@@ -74,7 +74,7 @@ def handle_create_room(data):
     password_hash = hashlib.sha256(password.encode()).hexdigest()
 
     ACTIVE_ROOMS[room_name] = {
-        'password': password,
+        # 'password': password,
         'password_hash': password_hash,
         'algo': algo,
         'creator': creator,

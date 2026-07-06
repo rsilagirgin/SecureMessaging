@@ -4,10 +4,10 @@
 // (bkz. ciphers/caesar.py -> generate_caesar_shift) ve odaya katılan
 // istemciye join_confirmed olayıyla gönderilir (data.shift).
 
-ALPHABET = (
-   ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;\'"-()\n'
-)
-
+// ALPHABET = (
+//    ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;\'"-()\n'
+// )
+ALPHABET = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;'\x22-()"
 
 function caesarEncrypt(text, shift) {
     let result = "";

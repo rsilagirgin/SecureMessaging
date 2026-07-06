@@ -7,9 +7,10 @@ gizli anahtarı gibi davranır ve sadece odaya bağlanan istemcilere
 
 import os
 
-ALPHABET = (
-   ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;\'"-()\n'
-)
+# ALPHABET = (
+#    ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;\'"-()\n'
+# )
+ALPHABET = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜabcdefghijklmnopqrstuvwxyzçğıöşü.,!?:;'\x22-()"
 
 
 def generate_caesar_shift() -> int:

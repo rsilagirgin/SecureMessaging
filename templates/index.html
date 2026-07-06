@@ -259,13 +259,33 @@
 <div id="chat-screen" class="hidden">
     <div class="chat-header-wrapper">
         <h3 id="room-title">Secure Chat Line</h3>
+        <div id="aes-key-hex-banner" class="hidden">
+
+    <div class="aes-header">
+
+        <div class="aes-title">
+            🔐 <strong>AES Session Key</strong>
+        </div>
+
+    </div>
+
+    <div id="aes-key-hex-value" class="aes-key-value"></div>
+    <div class="aes-info-inline">
+            AES-256-GCM ✓ • PBKDF2 ✓ • SHA-256 ✓ • Random Salt ✓
+        </div>
+    
+
+</div>
+      
         
         <!-- 🆕 GÖRÜNÜM DEĞİŞTİRME SEKMELERİ -->
         <div class="view-switcher-zone" id="view-switcher-wrapper">
             <button type="button" class="view-tab active" id="view-clean-btn" onclick="switchChatView('clean')">💬 Plain Text View</button>
             <button type="button" class="view-tab" id="view-cipher-btn" onclick="switchChatView('cipher')">🔒 Ciphertext View Only</button>
         </div>
- 
+       
+
+    
         <!-- 🆕 YENİ EXIT BUTTON VE KEY ALANI -->
         <div style="display: flex; align-items: center; gap: 12px;">
            
@@ -332,20 +352,40 @@
  
     // 🆕 SEKMELER ARASI GEÇİŞ MOTORU
     function switchChatView(viewType) {
+
     const chatBox = document.getElementById('chat-box');
     const cleanBtn = document.getElementById('view-clean-btn');
     const cipherBtn = document.getElementById('view-cipher-btn');
-    
+    const aesKeyBanner = document.getElementById('aes-key-hex-banner');
+
     if (viewType === 'clean') {
+
         chatBox.classList.remove('show-cipher');
         chatBox.classList.add('show-clean');
+
         cleanBtn.classList.add('active');
         cipherBtn.classList.remove('active');
+
+        if (aesKeyBanner)
+            aesKeyBanner.classList.add('hidden');
+
     } else {
+
         chatBox.classList.remove('show-clean');
         chatBox.classList.add('show-cipher');
+
         cipherBtn.classList.add('active');
         cleanBtn.classList.remove('active');
+
+        if (
+            aesKeyBanner &&
+            currentRoomAlgo === "aes" &&
+            currentAESKeyHex
+        ) {
+            aesKeyBanner.classList.remove("hidden");
+        } else if (aesKeyBanner) {
+            aesKeyBanner.classList.add("hidden");
+        }
     }
 }
     // --- ŞİFRELEME MOTORU BURADA BİTTİ ---
@@ -744,9 +784,11 @@ function confirmExitRoom() {
  
     // 4. Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
     currentSelectedRoom = "";
-    currentRoomPIN = "";
-    currentRoomAlgo = "";
-    currentAesKey = null;
+currentRoomPIN = "";
+currentRoomAlgo = "";
+currentAesKey = null;
+currentAESKeyHex = null;
+document.getElementById('aes-key-hex-banner').classList.add('hidden');
     
     // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
     if (isHacker) {
@@ -817,16 +859,17 @@ if (secureStatus) {
  
     // AES odasıysa: oda şifresi (currentRoomPIN) + sunucudan gelen
     // odaya özel salt (data.aes_salt) ile AES-GCM anahtarını türet.
-    if (data.aes_salt) {
-        try {
-            currentAesKey = await deriveAESKey(currentRoomPIN, data.aes_salt);
-        } catch (e) {
-            console.error("AES anahtarı türetilemedi:", e);
-            currentAesKey = null;
-        }
-    } else {
+   if (data.aes_salt) {
+    try {
+        currentAesKey = await deriveAESKey(currentRoomPIN, data.aes_salt);
+        document.getElementById('aes-key-hex-value').innerText = currentAESKeyHex;
+    } catch (e) {
+        console.error("AES anahtarı türetilemedi:", e);
         currentAesKey = null;
     }
+} else {
+    currentAesKey = null;
+}
 });
     // 🔒 GÜVENLİ VE UYUMLU DEŞİFRE KARŞILAYICISI
    // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ

@@ -679,3 +679,47 @@ input:focus, select:focus {
     padding: 4px 14px;
     border-radius: 20px;
 }
+#aes-key-hex-banner{
+    display:none;
+    margin:10px 0;
+    padding:10px 14px;
+    border-radius:8px;
+    border:1px solid #2f3b52;
+    background:#1b2330;
+}
+
+#aes-key-hex-banner:not(.hidden){
+    display:block;
+}
+
+.aes-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+    flex-wrap:wrap;
+}
+
+.aes-title{
+    color:#60a5fa;
+    font-size:13px;
+    font-weight:600;
+}
+
+
+.aes-info-inline{
+    font-size:11px;
+    color:#9ca3af;
+}
+
+.aes-key-value{
+    font-family:Consolas, monospace;
+    font-size:11px;
+    color:#22c55e;
+    background:#111827;
+    border:1px solid #374151;
+    border-radius:6px;
+    padding:8px;
+    overflow-wrap:anywhere;
+}
