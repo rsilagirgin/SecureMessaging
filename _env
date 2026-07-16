@@ -1,0 +1,7 @@
+SECRET_KEY=crypto_simulator_secret
+AES_KEY=f8P9vM2Qa71XcL0rD4zK8Ws3Bn5HtY6J
+
+# 🪪 AKIS Kart (gerçek donanım) - PKCS#11 kütüphane yolu.
+# Genelde otomatik bulunur (System32/SysWOW64 altında akisp11.dll),
+# farklı bir konumdaysa burada tam yolu belirt:
+# AKIS_PKCS11_LIB=C:\Windows\System32\akisp11.dll

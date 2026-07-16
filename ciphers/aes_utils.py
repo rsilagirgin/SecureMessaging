@@ -1,25 +1,4 @@
-"""
-AES anahtar mantığı.
 
-Gerçek AES şifreleme/çözme işlemi TAMAMEN tarayıcıda,
-Web Crypto API (AES-GCM) ile yapılır — bu dosya şifreleme yapmaz.
-Bu dosyanın tek görevi, backend ile frontend'in "aynı anahtardan"
-konuşmasını sağlayacak salt/pepper mantığını üretmektir:
-
-    oda_şifresi (kullanıcı bilir)  +  etkin_salt (sunucu üretir)
-                        |
-                        v
-              PBKDF2  ->  AES-GCM anahtarı   (tarayıcıda)
-
-'etkin_salt' iki parçadan oluşur:
-    1) room_salt  -> odaya özel, rastgele üretilir (Caesar'daki shift gibi)
-    2) SERVER_PEPPER -> .env dosyasındaki AES_KEY, hiçbir zaman istemciye
-       ham haliyle gönderilmez; sadece HMAC ile room_salt'ı 'imzalamak'
-       için kullanılır.
-
-Böylece .env'deki AES_KEY artık gerçekten işlevsel: onu bilmeyen biri
-(sunucuya erişimi olmayan biri) doğru etkin_salt'ı üretemez.
-"""
 
 import os
 import hmac

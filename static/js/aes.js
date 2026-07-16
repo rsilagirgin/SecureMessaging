@@ -1,3 +1,4 @@
+
 // aes.js — İstemci tarafı AES-GCM şifreleme.
 //
 // Anahtar, oda şifresi (roomPassword) + sunucudan join_confirmed ile
@@ -54,6 +55,10 @@ async function deriveAESKey(roomPassword, saltHex) {
 }
 
 async function encryptData(plainText, aesKey) {
+    if (!aesKey) {
+        console.error("AES anahtarı eksik, şifreleme yapılamadı.");
+        throw new Error("AES anahtarı eksik.");
+    }
     const enc = new TextEncoder();
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await window.crypto.subtle.encrypt(
