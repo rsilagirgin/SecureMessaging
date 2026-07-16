@@ -1188,6 +1188,9 @@ if (!isHacker) {
             <button type="button" id="exit-room-btn" onclick="exitCurrentRoom()" style="background: #ef4444; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.9rem;">
                 🚪 Exit Room
             </button>
+            <button type="button" id="delete-room-btn" class="hidden" onclick="deleteCurrentRoom()" style="background: #7f1d1d; color: white; border: 1px solid #ef4444; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.9rem;">
+                🗑️ Delete Room
+            </button>
         </div>
     </div>
  
@@ -1219,12 +1222,12 @@ if (!isHacker) {
                 
                 <button type="button" class="next-btn" onclick="goToChoiceStep()">Next</button>
 
-                <div class="akis-divider"><span>veya</span></div>
+                <div class="akis-divider"><span>or</span></div>
 
-                <button type="button" class="akis-login-btn" id="akis-scan-btn">AKIS Kart ile Giris</button>
+                <button type="button" class="akis-login-btn" id="akis-scan-btn">Enter with AKIS card</button>
 
                 <div id="akis-card-list" class="akis-card-list hidden">
-                    <label>Takili AKIS Kartlari - birini secin:</label>
+                    <label>Choose one of the included AKIS Cards:</label>
                     <div id="akis-card-list-items"></div>
                 </div>
 
@@ -1272,10 +1275,10 @@ if (!isHacker) {
                         <span class="info-tooltip-trigger" title="">?</span>
                     </div>
                     <select id="algo-select-create">
-                        <option value="plain">Unencrypted (Plain Text)</option>
-                        <option value="caesar">Caesar Cipher (Shifting)</option>
-                        <option value="aes">AES</option>
-                        <option value="rsa">RSA (Asymmetric Key)</option>
+                        <option value="plain">🔓Unencrypted (Plain Text)</option>
+                        <option value="caesar">🤴🏼Caesar Cipher (Shifting)</option>
+                        <option value="aes">🔑AES</option>
+                        <option value="rsa">🔐RSA (Asymmetric Key)</option>
                         <option value="e2ee">🔒 Real End-to-End Encryption (RSA+AES Hybrid)</option>
                     </select>
                     
@@ -1365,17 +1368,47 @@ if (!isHacker) {
     <!-- 🆕 js ile görünümü kontrol etmek için chat-box'a varsayılan olarak show-clean sınıfı veriyoruz -->
     <div id="chat-box" class="show-clean"></div>
     <div class="chat-input-area" id="input-area-wrapper">
-        <div id="message-input" class="rich-input-container" contenteditable="true"></div>
-        
-        <div class="input-actions-column">
-            <div class="text-tools">
-                <button type="button" class="tool-btn" id="bold-btn">B</button>
-                <button type="button" class="tool-btn" id="italic-btn">I</button>
-                <button type="button" class="tool-btn" id="underline-btn">U</button>
-            </div>
-            <button type="button" id="send-btn">Send</button>
+    <div id="message-input" class="rich-input-container" contenteditable="true"></div>
+
+    <div class="input-actions-column">
+
+    <div class="text-tools">
+
+        <button type="button" class="tool-btn" id="bold-btn">B</button>
+        <button type="button" class="tool-btn" id="italic-btn">I</button>
+        <button type="button" class="tool-btn" id="underline-btn">U</button>
+
+        <!-- Emoji Butonu -->
+        <button type="button" class="tool-btn" id="emoji-btn">😊</button>
+
+        <!-- Emoji Paneli -->
+        <div id="emoji-panel" class="emoji-panel">
+
+            <span class="emoji">😀</span>
+            <span class="emoji">😁</span>
+            <span class="emoji">😂</span>
+            <span class="emoji">🤣</span>
+            <span class="emoji">😍</span>
+            <span class="emoji">😎</span>
+            <span class="emoji">😢</span>
+            <span class="emoji">❤️</span>
+            <span class="emoji">👍</span>
+
+            <span class="emoji">😡</span>
+            <span class="emoji">🤔</span>
+            <span class="emoji">🎉</span>
+            <span class="emoji">🚀</span>
+            <span class="emoji">🔒</span>
+            <span class="emoji">🔑</span>
+            <span class="emoji">📷</span>
+            <span class="emoji">💬</span>
+
         </div>
+
     </div>
+
+    <button type="button" id="send-btn">Send</button>
+
 </div>
 <!-- 🚨 ÖZEL ANASAYFAYA DÖNÜŞ MODAL PENCERESİ -->
     <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
@@ -1401,6 +1434,19 @@ if (!isHacker) {
         </div>
     </div>
 </div>
+
+    <!-- 🗑️ Oda kurucusunun odayı manuel silmesi için onay modalı -->
+    <div id="delete-room-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: #1e293b; border: 2px solid #7f1d1d; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="font-size: 2.5rem; margin-bottom: 12px;">🗑️</div>
+        <h3 style="color: #ffffff; margin: 0 0 10px 0; font-size: 1.3rem; font-weight: 700;">Delete Room?</h3>
+        <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin: 0 0 24px 0;">This will permanently delete the room for everyone currently in it. This action cannot be undone.</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" onclick="closeDeleteRoomModal()" style="flex: 1; background: #334155; color: #cbd5e1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Cancel</button>
+            <button type="button" onclick="confirmDeleteRoom()" style="flex: 1; background: #b91c1c; color: #ffffff; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">Yes, Delete</button>
+        </div>
+    </div>
+</div>
     
  
     <script>
@@ -1408,6 +1454,7 @@ if (!isHacker) {
     // sunucudan gelen verilerle dolduruluyor (bkz. join_confirmed handler'ı).
     // caesarEncrypt/caesarDecrypt -> static/js/caesar.js
     // deriveAESKey/encryptData/decryptData -> static/js/aes.js
+    let savedRange = null;
     let currentShift = null;
     let currentAesKey = null;
     let currentRSAPublicKey = null;
@@ -1466,6 +1513,9 @@ if (!isHacker) {
         }
     }
 }
+    const emojiBtn = document.getElementById("emoji-btn");
+    const emojiPanel = document.getElementById("emoji-panel");
+    const messageInput = document.getElementById("message-input");
     // --- ŞİFRELEME MOTORU BURADA BİTTİ ---
  
     const socket = io();
@@ -1484,7 +1534,26 @@ if (!isHacker) {
     let currentSelectedRoom = ""; 
     let currentRoomPIN = ""; 
     let currentRoomAlgo = ""; 
+    let currentRoomCreator = "";
     let isPasswordVisible = false;
+    let pendingRoomDeletion = false; // biz mi sildik, yoksa bize mi bildirildi ayırt etmek için
+    messageInput.addEventListener("keyup", saveSelection);
+messageInput.addEventListener("mouseup", saveSelection);
+messageInput.addEventListener("focus", saveSelection);
+messageInput.addEventListener("input", saveSelection);
+document.addEventListener("selectionchange", saveSelection);
+
+
+function saveSelection() {
+    const selection = window.getSelection();
+
+    if (
+        selection.rangeCount > 0 &&
+        messageInput.contains(selection.anchorNode)
+    ) {
+        savedRange = selection.getRangeAt(0).cloneRange();
+    }
+}
  
     // ✅ YENİ PROFiL GEÇİŞ FONKSİYONU
 // ✅ KİLİTLENMEYİ ÖNLEYEN, GARANTİLİ GEÇİŞ FONKSİYONU
@@ -1607,6 +1676,54 @@ function goToChoiceStep() {
         return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
     }
 
+    // 🔔 Sayfanın herhangi bir ekranında (lobi veya chat) görünen, native
+    // alert() kullanmayan basit bir ekran-içi bildirim (toast). type: 'success' | 'info' | 'error'
+    function showAppNotification(message, type = 'info', duration = 5000) {
+        let toast = document.getElementById('app-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'app-toast';
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%) translateY(-20px)';
+            toast.style.zIndex = '10000';
+            toast.style.padding = '14px 22px';
+            toast.style.borderRadius = '10px';
+            toast.style.fontWeight = '600';
+            toast.style.fontSize = '0.95rem';
+            toast.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.5)';
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            toast.style.pointerEvents = 'none';
+            toast.style.maxWidth = '90%';
+            toast.style.textAlign = 'center';
+            document.body.appendChild(toast);
+        }
+
+        const palette = {
+            success: { bg: '#14532d', border: '#22c55e', color: '#dcfce7' },
+            info: { bg: '#1e293b', border: '#3b82f6', color: '#dbeafe' },
+            error: { bg: '#7f1d1d', border: '#ef4444', color: '#fee2e2' },
+        };
+        const colors = palette[type] || palette.info;
+        toast.style.background = colors.bg;
+        toast.style.border = `1px solid ${colors.border}`;
+        toast.style.color = colors.color;
+        toast.textContent = message;
+
+        clearTimeout(toast._hideTimer);
+        // Bir sonraki frame'de göster ki transition tetiklensin
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
+        });
+        toast._hideTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(-20px)';
+        }, duration);
+    }
+
     // 🛡️ GÜVENLİK: mesaj kutusu contenteditable olduğu için (Bold/Italic/
     // Underline butonları) kullanıcıdan gelen mesaj ham HTML içerir. Bunu
     // olduğu gibi ekrana basmak (özellikle deşifre edilmiş metni) bir
@@ -1699,7 +1816,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
 
     socket.on('akis_slots', (data) => {
         akisScanBtn.disabled = false;
-        akisScanBtn.textContent = "AKIS Kart ile Giris";
+        akisScanBtn.textContent = "Entering with AKIS card";
         detectedAkisTokens = data.tokens || [];
 
         if (detectedAkisTokens.length === 0) {
@@ -1711,8 +1828,8 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
 
     socket.on('akis_slots_error', (data) => {
         akisScanBtn.disabled = false;
-        akisScanBtn.textContent = "AKIS Kart ile Giris";
-        showLobbyError('left', `AKİS kartı okunamadı: ${data.msg}`);
+        akisScanBtn.textContent = "Entering with AKIS card";
+        showLobbyError('left', `AKIS card could not be read: ${data.msg}`);
     });
 
     function renderAkisCardList() {
@@ -1746,7 +1863,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
         const displayName = token.owner_first
             ? `${token.owner_first} ${token.owner_last || ''}`.trim()
             : token.label;
-        akisPinLabel.textContent = `${displayName} — PIN Girin:`;
+        akisPinLabel.textContent = `${displayName} — Enter PIN:`;
         akisPinInput.value = "";
         akisPinError.classList.add('hidden');
         akisPinAttemptsEl.classList.add('hidden');
@@ -1765,7 +1882,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
         if (!pin) return;
 
         akisPinConfirmBtn.disabled = true;
-        akisPinConfirmBtn.textContent = "Doğrulanıyor…";
+        akisPinConfirmBtn.textContent = "Confirming...";//Doğrulanıyor…";
         akisPinError.classList.add('hidden');
 
         // PIN, sadece bu tek istekte sunucuya gider ve orada C_Login için
@@ -1851,6 +1968,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
                 // currentRoomPIN artık kullanıcı "Connect to the Room"a bastığında,
                 // kendi yazdığı şifreden set ediliyor (bkz. connectRoomBtn handler'ı).
                 currentRoomAlgo = rooms[name].algo; 
+                currentRoomCreator = rooms[name].creator || "";
                 
                 // Kullanıcının decryption select kutusunu odanın algoritmasına eşitleyen alan
                 const algoSelectConnect = document.getElementById('algo-select-connect');
@@ -1885,6 +2003,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
         currentSelectedRoom = roomName;
         currentRoomPIN = roomPass; 
         currentRoomAlgo = selectedAlgo;
+        currentRoomCreator = globalUsername; // odayı biz kurduk, silme butonu bize görünmeli
 
         // GERÇEK E2EE: anahtar çifti odaya katılmadan ÖNCE, kendi tarayıcımızda
         // üretilir. Private key hiçbir zaman socket.emit ile gönderilmez.
@@ -1947,6 +2066,23 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
         document.getElementById('login-screen').classList.remove('hidden');
         document.getElementById('chat-screen').classList.add('hidden');
         document.getElementById('nav-modes').classList.add('hidden');
+    });
+
+    // 🗑️ Oda kurucusu odayı sildiğinde, odadaki HERKES (kurucu dahil) buraya
+    // düşer; sunucu zaten herkesi socket.io odasından çıkardığı için burada
+    // sadece istemci arayüzünü lobiye döndürüyoruz. Native alert() KULLANILMAZ;
+    // ekran-içi toast bildirimi gösterilir.
+    socket.on('room_deleted', (data) => {
+        if (!data || data.room_name !== currentSelectedRoom) return;
+        const wasInitiatedByMe = pendingRoomDeletion;
+        pendingRoomDeletion = false;
+        resetChatUIToLobby();
+
+        if (wasInitiatedByMe) {
+            showAppNotification('Room deleted successfully.', 'success');
+        } else {
+            showAppNotification(data.msg || 'This room was deleted by its creator.', 'info');
+        }
     });
  
     socket.on('status', (data) => {
@@ -2068,6 +2204,7 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
             avatar: selectedAvatar,
             room_name: currentSelectedRoom
         });
+        savedRange = null;
  
         // Mesaj kutusunu temizle
         msgInput.innerHTML = "";
@@ -2091,6 +2228,30 @@ for (let avatarId = 1; avatarId <= 15; avatarId++) {
         document.getElementById('room-title').innerText = `Room: ${currentSelectedRoom.toUpperCase()} (${currentRoomAlgo.toUpperCase()} Mode)`;
         document.getElementById('room-pin-display').innerText = "Key: ••••••••";
         isPasswordVisible = false;
+
+        // 🗑️ Odayı sadece kurucusu silebilir; buton sadece o kişiye görünür.
+        const deleteBtn = document.getElementById('delete-room-btn');
+        if (deleteBtn) {
+            deleteBtn.classList.toggle('hidden', !currentRoomCreator || globalUsername !== currentRoomCreator);
+        }
+    }
+    function deleteCurrentRoom() {
+        if (!currentSelectedRoom) return;
+        const modal = document.getElementById('delete-room-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+    function closeDeleteRoomModal() {
+        const modal = document.getElementById('delete-room-modal');
+        if (modal) modal.style.display = 'none';
+    }
+    function confirmDeleteRoom() {
+        closeDeleteRoomModal();
+        if (!currentSelectedRoom) return;
+        pendingRoomDeletion = true;
+        socket.emit('delete_room', {
+            username: globalUsername,
+            room_name: currentSelectedRoom
+        });
     }
     function exitCurrentRoom() {
     if (!currentSelectedRoom) return;
@@ -2103,42 +2264,35 @@ function closeExitRoomModal() {
     if (modal) modal.style.display = 'none';
 }
  
-function confirmExitRoom() {
-    closeExitRoomModal();
- 
-    // 1. Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
-    socket.emit('leave', { 
-        username: globalUsername, 
-        room_name: currentSelectedRoom 
-    });
- 
-    // 2. Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
+function resetChatUIToLobby() {
+    // Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
     document.getElementById('chat-screen').classList.add('hidden');
     document.getElementById('nav-modes').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
-    
+
     // Doğrudan "Create / Connect" butonlarının olduğu panele paslıyoruz
     document.getElementById('step-identity').classList.add('hidden');
     document.getElementById('panel-create').classList.add('hidden');
     document.getElementById('panel-connect').classList.add('hidden');
     document.getElementById('step-choice').classList.remove('hidden');
- 
-    // 3. İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
+
+    // İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
     document.getElementById('chat-box').innerHTML = "";
- 
-    // 4. Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
+
+    // Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
     currentSelectedRoom = "";
-currentRoomPIN = "";
-currentRoomAlgo = "";
-currentAesKey = null;
-currentAESKeyHex = null;
-currentRSAPublicKey = null;
-currentRSAPrivateKey = null;
-myE2EEKeyPair = null;
-myE2EEPublicKeyJWK = null;
-roomPublicKeys = {};
-document.getElementById('aes-key-hex-banner').classList.add('hidden');
-    
+    currentRoomPIN = "";
+    currentRoomAlgo = "";
+    currentRoomCreator = "";
+    currentAesKey = null;
+    currentAESKeyHex = null;
+    currentRSAPublicKey = null;
+    currentRSAPrivateKey = null;
+    myE2EEKeyPair = null;
+    myE2EEPublicKeyJWK = null;
+    roomPublicKeys = {};
+    document.getElementById('aes-key-hex-banner').classList.add('hidden');
+
     // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
     if (isHacker) {
         isHacker = false;
@@ -2149,10 +2303,23 @@ document.getElementById('aes-key-hex-banner').classList.add('hidden');
         const secureStatus = document.getElementById('secure-mode-status');
         if (secureStatus) {
             secureStatus.innerText = "🔒 Secure Chat Line Active";
-            secureStatus.style.color = ""; 
+            secureStatus.style.color = "";
         }
     }
 }
+
+function confirmExitRoom() {
+    closeExitRoomModal();
+
+    // Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
+    socket.emit('leave', {
+        username: globalUsername,
+        room_name: currentSelectedRoom
+    });
+
+    resetChatUIToLobby();
+}
+
     // 🏠 MODAL PENCERESİNİ EKİRANIN ORTASINDA AÇAR
     function confirmMainPageReturn() {
         const modal = document.getElementById('custom-confirm-modal');
@@ -2345,6 +2512,66 @@ if (!isHacker) {
         chatBox.innerHTML += `<div class="status-msg-row"><div class="status-msg" style="background:#fee2e2;color:#991b1b;">⚠️ Bir mesaj görüntülenirken hata oluştu (konsolu kontrol edin).</div></div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
+});
+// 😊 Emoji panelini aç/kapat
+// 😊 Emoji panelini aç/kapat
+emojiBtn.addEventListener("mousedown", (e) => e.preventDefault());
+emojiBtn.addEventListener("click", () => {
+    if (emojiPanel.style.display === "flex") {
+        emojiPanel.style.display = "none";
+    } else {
+        emojiPanel.style.display = "flex";
+    }
+});
+
+// Emoji seçilince mesaja, İMLECİN OLDUĞU YERE ekle
+document.querySelectorAll(".emoji").forEach(emoji => {
+    emoji.addEventListener("mousedown", (e) => e.preventDefault());
+    emoji.addEventListener("click", () => {
+        messageInput.focus();
+        const selection = window.getSelection();
+        let range;
+
+        if (selection.rangeCount > 0 && messageInput.contains(selection.anchorNode)) {
+            // En güvenilir yol: mesaj kutusundaki CANLI (o anki) imleç konumu
+            range = selection.getRangeAt(0);
+        } else if (savedRange && messageInput.contains(savedRange.startContainer)) {
+            // Canlı seçim yoksa, en son kaydedilen konumu geri yükle
+            range = savedRange;
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            // Hiçbiri yoksa (örn. kutu boşsa), sona ekle
+            range = document.createRange();
+            range.selectNodeContents(messageInput);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        range.deleteContents();
+        const textNode = document.createTextNode(emoji.textContent);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+
+        selection.removeAllRanges();
+        selection.addRange(range);
+        savedRange = range.cloneRange();
+
+        emojiPanel.style.display = "none";
+    });
+});
+
+// Panel dışına tıklanınca kapat
+document.addEventListener("click", function(e){
+
+    if(!emojiPanel.contains(e.target) && e.target !== emojiBtn){
+
+        emojiPanel.style.display="none";
+
+    }
+
 });
 </script>
 </body>

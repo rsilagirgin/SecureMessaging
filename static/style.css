@@ -235,6 +235,9 @@ input:focus, select:focus {
     max-width: 70%; 
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.01);
     line-height: 1.5;
+    overflow-wrap: break-word;   /* ← ekle */
+    word-break: break-word;      /* ← ekle */
+    white-space: pre-wrap;       /* ← ekle (satır sonlarını korurken taşmayı da engeller) */
 }
 
 /* Sağ Balon (Senin Mesajların - Şık Kurumsal Mavi) */
@@ -722,4 +725,59 @@ input:focus, select:focus {
     border-radius:6px;
     padding:8px;
     overflow-wrap:anywhere;
+}
+
+
+/* ==========================
+   Emoji Panel
+========================== */
+
+.text-tools{
+    position: relative;
+}
+
+.emoji-panel{
+
+    display:none;
+
+    position:absolute;
+
+    bottom:45px;
+
+    right:0;
+
+    width:220px;
+
+    padding:10px;
+
+    background:white;
+
+    border:1px solid #ddd;
+
+    border-radius:12px;
+
+    box-shadow:0 8px 20px rgba(0,0,0,.2);
+
+    flex-wrap:wrap;
+
+    gap:8px;
+
+    z-index:999;
+
+}
+
+.emoji{
+
+    font-size:24px;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.emoji:hover{
+
+    transform:scale(1.3);
+
 }
