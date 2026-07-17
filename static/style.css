@@ -781,3 +781,18 @@ input:focus, select:focus {
     transform:scale(1.3);
 
 }
+.chat-image {
+    max-width: 280px;
+    max-height: 280px;
+    border-radius: 10px;
+    display: block;
+    margin-top: 6px;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    object-fit: cover;
+}
+.chat-image-invalid {
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
