@@ -415,6 +415,9 @@
     <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
 
 </div>
+    </div><!-- #input-area-wrapper KAPANIŞI (🔧 eksikti — modallar bunun içine hapsoluyordu) -->
+</div><!-- #chat-screen KAPANIŞI (🔧 eksikti) -->
+</div><!-- #main-container KAPANIŞI (🔧 eksikti) -->
 <!-- 🚨 ÖZEL ANASAYFAYA DÖNÜŞ MODAL PENCERESİ -->
     <div id="custom-confirm-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center;">
         <div style="background: #1e293b; border: 2px solid #1e3a8a; border-radius: 14px; padding: 24px; width: 90%; max-width: 420px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
@@ -530,7 +533,6 @@
     const msgInput = document.getElementById('message-input'); 
  
     let globalUsername = "";
-    let realUserIdentity = "";   // 🆕 hacker modundan bağımsız, kullanıcının gerçek ismi
     let selectedAlgo = ""; 
     let selectedAvatar = "1";
     let isHacker = false; 
@@ -675,7 +677,6 @@ function goToChoiceStep() {
         
         // Sonuç: "Sıla G."
         globalUsername = `${firstName} ${shortLastName}`; 
-        realUserIdentity = globalUsername;   // 🆕 gerçek kimliği yedekle
         
         // Ekranları değiştir
         document.getElementById('step-identity').classList.add('hidden');
@@ -687,7 +688,6 @@ function goToChoiceStep() {
         firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
         const shortLastName = lastName.charAt(0).toUpperCase() + ".";
         globalUsername = `${firstName} ${shortLastName}`;
-        realUserIdentity = globalUsername;   // 🆕 gerçek kimliği yedekle
         
         document.getElementById('step-identity').classList.add('hidden');
         document.getElementById('step-choice').classList.remove('hidden');
@@ -1379,24 +1379,13 @@ function closeExitRoomModal() {
 }
  
 function resetChatUIToLobby() {
-    // Chat ekranını gizleyip, lobi seçim adımını (step-choice) görünür yapıyoruz
     document.getElementById('chat-screen').classList.add('hidden');
     document.getElementById('nav-modes').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
-
-    // Doğrudan "Create / Connect" butonlarının olduğu panele paslıyoruz
-    document.getElementById('step-identity').classList.add('hidden');
-    document.getElementById('panel-create').classList.add('hidden');
-    document.getElementById('panel-connect').classList.add('hidden');
-    document.getElementById('step-choice').classList.remove('hidden');
-
-    // İçeride kalan eski mesajları temizleyelim ki yeni odaya girince çorba olmasın
     document.getElementById('chat-box').innerHTML = "";
 
-    // Odadan çıktığımız için mevcut oda değişkenlerini sıfırlıyoruz
     currentSelectedRoom = "";
     currentRoomPIN = "";
-    // 🔒 GÜVENLİK: DOM'daki şifre input alanlarını da temizle, bellekte bırakma
     document.getElementById('room-pass-join').value = "";
     document.getElementById('room-pass-create').value = "";
     currentRoomAlgo = "";
@@ -1410,37 +1399,33 @@ function resetChatUIToLobby() {
     roomPublicKeys = {};
     document.getElementById('aes-key-hex-banner').classList.add('hidden');
 
-    // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
-   // Eğer hacker modundaysak lobiye dönünce normal moda geri çekelim
+    document.getElementById('step-identity').classList.add('hidden');
+    document.getElementById('panel-create').classList.add('hidden');
+    document.getElementById('panel-connect').classList.add('hidden');
+
     if (isHacker) {
+        // Hacker View'dan çıkınca kimlik hatırlanmaz, baştan giriş yapılır.
         isHacker = false;
-        globalUsername = realUserIdentity;   // 🆕 gerçek kimliği geri yükle
+        globalUsername = "";
         document.getElementById('main-container').classList.remove('hacker-mode-active');
         document.getElementById('input-area-wrapper').classList.remove('hidden');
         document.getElementById('view-switcher-wrapper').classList.remove('hidden');
         document.getElementById('hacker-mode-btn').classList.remove('active');
         const secureStatus = document.getElementById('secure-mode-status');
-        if (secureStatus) {
-            secureStatus.innerText = "🔒 Secure Chat Line Active";
-            secureStatus.style.color = "";
-        }
+        if (secureStatus) { secureStatus.innerText = "🔒 Secure Chat Line Active"; secureStatus.style.color = ""; }
+        document.getElementById('firstname').value = "";
+        document.getElementById('lastname').value = "";
+        document.getElementById('step-identity').classList.remove('hidden');
+    } else {
+        document.getElementById('step-choice').classList.remove('hidden');
     }
 }
 
 function confirmExitRoom() {
     closeExitRoomModal();
-
-    if (!isHacker) {
-        // Sunucuya bu odadan ayrıldığımızı haber veriyoruz (Backend mekanizman için)
-        socket.emit('leave', {
-            username: globalUsername,
-            room_name: currentSelectedRoom
-        });
+    if (currentSelectedRoom) {
+        socket.emit('leave', { username: globalUsername, room_name: currentSelectedRoom });
     }
-    // Hacker modundaysa gerçek bir odaya hiç katılmadık (ROOM_USERS'ta kaydımız yok),
-    // bu yüzden 'leave' göndermeye gerek yok — sadece arayüzü lobiye döndürüyoruz.
-    // resetChatUIToLobby() zaten isHacker=false yapıp gerçek ismi geri yüklüyor.
-
     resetChatUIToLobby();
 }
     // 🏠 MODAL PENCERESİNİ EKİRANIN ORTASINDA AÇAR
@@ -1468,7 +1453,17 @@ function confirmExitRoom() {
     }
  
     function enableHackerMode() {
-        if(isHacker) return;
+        if (isHacker) return;
+
+        // Hacker View'a geçmeden önce gerçek odadan gerçekten çıkıyoruz.
+        if (currentSelectedRoom) {
+            socket.emit('leave', { username: globalUsername, room_name: currentSelectedRoom });
+        }
+        currentSelectedRoom = ""; currentRoomPIN = ""; currentRoomAlgo = ""; currentRoomCreator = "";
+        currentAesKey = null; currentAESKeyHex = null; currentRSAPublicKey = null; currentRSAPrivateKey = null;
+        myE2EEKeyPair = null; myE2EEPublicKeyJWK = null; roomPublicKeys = {};
+        document.getElementById('aes-key-hex-banner').classList.add('hidden');
+
         globalUsername = "Line_Sniffer_" + Math.floor(Math.random() * 1000);
         isHacker = true; selectedAlgo = "HACKER"; selectedAvatar = "1";
         document.getElementById('login-screen').classList.add('hidden');
