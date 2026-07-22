@@ -71,7 +71,7 @@ def handle_get_akis_slots():
     try:
         tokens = akis_pkcs11.list_akis_tokens()
     except Exception as e:
-        print(f"[AKIS] Kart taraması başarısız: {e}")
+        print(f"[AKIS] Card scan failed: {e}")
         emit('akis_slots_error', {'msg': str(e)})
         return
 
@@ -85,12 +85,12 @@ def handle_akis_login(data):
     pin = data.get('pin', '')
 
     if slot_id is None or not pin:
-        emit('akis_login_result', {'success': False, 'msg': 'Kart veya PIN eksik.'})
+        emit('akis_login_result', {'success': False, 'msg': 'Card or PIN missing.'})
         return
 
     try:
         info = akis_pkcs11.login(slot_id, pin, request.sid)
-        print(f"[AKIS] sid={request.sid} slot={slot_id} ile giriş başarılı "
+        print(f"[AKIS] sid={request.sid} slot={slot_id} login successful "
               f"({info['owner_first']} {info['owner_last']}).")
         emit('akis_login_result', {
             'success': True,
@@ -99,13 +99,24 @@ def handle_akis_login(data):
             'label': info['label'],
         })
     except RuntimeError as e:
-        print(f"[AKIS] sid={request.sid} slot={slot_id} giriş hatası: {e}")
+        print(f"[AKIS] sid={request.sid} slot={slot_id} login error: {e}")
         emit('akis_login_result', {'success': False, 'msg': str(e)})
 
 
 @socketio.on('akis_logout')
 def handle_akis_logout():
     akis_pkcs11.logout(request.sid)
+
+
+@socketio.on('leave_hacker_room')
+def handle_leave_hacker_room():
+    """Kullanıcı Hacker View'dan çıktığında istemci bu olayı gönderir.
+    Aksi halde socket bağlantısı (SPA olduğu için sayfa yenilenmez)
+    'hacker_room' Socket.IO odasında üye kalmaya devam eder ve kullanıcı
+    normal bir sohbet odasına dönse bile hacker_room'a broadcast edilen
+    '📡 Traffic Alert' gibi mesajları almaya devam eder."""
+    leave_room("hacker_room")
+    print(f"[HACKER] sid={request.sid} left 'hacker_room'.")
 
 
 @socketio.on('create_room')
@@ -144,8 +155,8 @@ def handle_create_room(data):
         'rsa_private': rsa_private,
         'time': datetime.now().strftime("%H:%M")
     }
-    print(f"[CREATE_ROOM] Oda '{room_name}' oluşturuldu (algo={algo}). "
-          f"Aktif odalar: {list(ACTIVE_ROOMS.keys())}")
+    print(f"[CREATE_ROOM] Room '{room_name}' created (algo={algo}). "
+          f"Active rooms: {list(ACTIVE_ROOMS.keys())}")
     broadcast_rooms()
     emit('room_created_success', {'room_name': room_name})
 
@@ -160,7 +171,10 @@ def handle_join(data):
 
     if is_hacker:
         join_room("hacker_room")
-        emit('status', {'msg': f'🕵️ Network tap established. Intercepting packets as "{username}"...'}, room="hacker_room")
+        emit('status', {
+            'msg': f'🕵️ Network tap established. Intercepting packets as "{username}"...',
+            'is_hacker_data': True,
+        }, room="hacker_room")
         return
 
     if room_name not in ACTIVE_ROOMS:
@@ -184,7 +198,7 @@ def handle_join(data):
 
     ROOM_USERS[room_name].append(internal_name)
     SID_USER_MAP[request.sid] = internal_name
-    print(f"[JOIN] {internal_name!r} odaya katıldı -> room={room_name!r}, sid={request.sid}. "
+    print(f"[JOIN] {internal_name!r} joined the room -> room={room_name!r}, sid={request.sid}. "
           f"ROOM_USERS['{room_name}']={ROOM_USERS[room_name]}")
 
     join_room(room_name)
@@ -205,14 +219,17 @@ def handle_join(data):
         'rsa_private': rsa_private_payload,
     }, room=request.sid)
     emit('status', {'msg': f'{username} entered the secure chat room.'}, room=room_name)
-    emit('status', {'msg': f'📡 Traffic Alert: New target ({username}) connected to room: {room_name}.'}, room="hacker_room")
+    emit('status', {
+        'msg': f'📡 Traffic Alert: New target ({username}) connected to room: {room_name}.',
+        'is_hacker_data': True,
+    }, room="hacker_room")
 
     # --- GERÇEK E2EE: sadece public key kaydedilip dağıtılır, private key
     # hiçbir zaman sunucuya gelmediği için burada da görünmez. ---
     if room.get('algo') == 'e2ee' and public_key_jwk:
         ROOM_PUBKEYS.setdefault(room_name, {})[internal_name] = public_key_jwk
-        print(f"[E2EE] {internal_name!r} public key gönderdi -> room={room_name!r}. "
-              f"Odadaki toplam public key sayısı: {len(ROOM_PUBKEYS[room_name])}")
+        print(f"[E2EE] {internal_name!r} sent a public key -> room={room_name!r}. "
+              f"Total public keys in room: {len(ROOM_PUBKEYS[room_name])}")
         emit('room_pubkeys', ROOM_PUBKEYS[room_name], room=room_name)
 
 
@@ -244,12 +261,12 @@ def handle_delete_room(data):
         return
 
     if ACTIVE_ROOMS[room_name].get('creator') != username:
-        print(f"[DELETE_ROOM] REDDEDİLDİ: {username!r}, '{room_name}' odasının "
-              f"kurucusu değil (kurucu={ACTIVE_ROOMS[room_name].get('creator')!r}).")
+        print(f"[DELETE_ROOM] REJECTED: {username!r} is not the creator of '{room_name}' "
+              f"(creator={ACTIVE_ROOMS[room_name].get('creator')!r}).")
         emit('error', {'msg': 'Only the room creator can delete this room.', 'side': 'right'})
         return
 
-    print(f"[DELETE_ROOM] Oda '{room_name}' kurucu ({username}) tarafından siliniyor.")
+    print(f"[DELETE_ROOM] Room '{room_name}' is being deleted by its creator ({username}).")
 
     # Odadaki herkese, oda silinmeden hemen önce haber ver ki istemciler
     # kendi arayüzlerini lobiye döndürebilsin.
@@ -270,7 +287,7 @@ def handle_delete_room(data):
         del ROOM_PUBKEYS[room_name]
     del ACTIVE_ROOMS[room_name]
 
-    print(f"[DELETE_ROOM] Oda '{room_name}' silindi. Aktif odalar: {list(ACTIVE_ROOMS.keys())}")
+    print(f"[DELETE_ROOM] Room '{room_name}' deleted. Active rooms: {list(ACTIVE_ROOMS.keys())}")
     broadcast_rooms()
 
 
@@ -278,15 +295,15 @@ def handle_delete_room(data):
 def handle_leave(data):
     room = data.get('room_name')
     username = data.get('username')
-    print(f"[LEAVE] event geldi -> room={room!r}, username={username!r}")
+    print(f"[LEAVE] event received -> room={room!r}, username={username!r}")
 
     if room:
         if room in ROOM_USERS and username in ROOM_USERS[room]:
             ROOM_USERS[room].remove(username)
-            print(f"[LEAVE] {username!r} ROOM_USERS['{room}']'dan çıkarıldı. Kalan: {ROOM_USERS.get(room)}")
+            print(f"[LEAVE] {username!r} removed from ROOM_USERS['{room}']. Remaining: {ROOM_USERS.get(room)}")
         else:
-            print(f"[LEAVE] UYARI: {username!r} ROOM_USERS['{room}'] içinde bulunamadı! "
-                  f"Mevcut ROOM_USERS: {ROOM_USERS}")
+            print(f"[LEAVE] WARNING: {username!r} not found in ROOM_USERS['{room}']! "
+                  f"Current ROOM_USERS: {ROOM_USERS}")
 
         # E2EE odasıysa: ayrılan kişinin public key'ini de sözlükten sil ve
         # odada kalanlara güncel (artık o kişiyi içermeyen) listeyi gönder,
@@ -305,15 +322,15 @@ def handle_leave(data):
             del ROOM_USERS[room]
             if room in ACTIVE_ROOMS:
                 del ACTIVE_ROOMS[room]
-                print(f"[LEAVE] Oda '{room}' boşaldığı için silindi.")
+                print(f"[LEAVE] Room '{room}' deleted because it became empty.")
             if room in ROOM_PUBKEYS:
                 del ROOM_PUBKEYS[room]
             broadcast_rooms()
         else:
-            print(f"[LEAVE] Oda '{room}' silinmedi çünkü hâlâ kullanıcı var veya "
-                  f"ROOM_USERS içinde yok: {ROOM_USERS.get(room)}")
+            print(f"[LEAVE] Room '{room}' was not deleted because it still has users or "
+                  f"is not in ROOM_USERS: {ROOM_USERS.get(room)}")
     else:
-        print(f"[LEAVE] UYARI: 'room_name' verisi boş geldi! data={data}")
+        print(f"[LEAVE] WARNING: 'room_name' data was empty! data={data}")
 
 
 @socketio.on('disconnect')
@@ -327,10 +344,10 @@ def handle_disconnect():
 
     username = SID_USER_MAP.pop(sid, None)
     print(f"[DISCONNECT] sid={sid} -> username={username!r} "
-          f"(SID_USER_MAP boyutu şimdi: {len(SID_USER_MAP)})")
+          f"(SID_USER_MAP size is now: {len(SID_USER_MAP)})")
     if not username:
-        print("[DISCONNECT] UYARI: Bu sid için SID_USER_MAP'te kayıt yoktu "
-              "(kullanıcı hiç 'join' etmemiş olabilir, örn. lobide kapattı).")
+        print("[DISCONNECT] WARNING: No entry in SID_USER_MAP for this sid "
+              "(the user may have never 'join'ed, e.g. closed the tab in the lobby).")
         return
 
     found = False
@@ -338,8 +355,8 @@ def handle_disconnect():
         if username in ROOM_USERS[room]:
             found = True
             ROOM_USERS[room].remove(username)
-            print(f"[DISCONNECT] {username!r} ROOM_USERS['{room}']'dan çıkarıldı. "
-                  f"Kalan: {ROOM_USERS.get(room)}")
+            print(f"[DISCONNECT] {username!r} removed from ROOM_USERS['{room}']. "
+                  f"Remaining: {ROOM_USERS.get(room)}")
             emit('status', {'msg': f'ℹ️ {username} has left the room.'}, room=room)
 
             if room in ROOM_PUBKEYS and username in ROOM_PUBKEYS[room]:
@@ -353,14 +370,14 @@ def handle_disconnect():
                 del ROOM_USERS[room]
                 if room in ACTIVE_ROOMS:
                     del ACTIVE_ROOMS[room]
-                    print(f"[DISCONNECT] Oda '{room}' boşaldığı için silindi.")
+                    print(f"[DISCONNECT] Room '{room}' deleted because it became empty.")
                 if room in ROOM_PUBKEYS:
                     del ROOM_PUBKEYS[room]
                 broadcast_rooms()
             break
     if not found:
-        print(f"[DISCONNECT] UYARI: {username!r} hiçbir ROOM_USERS listesinde bulunamadı. "
-              f"Mevcut ROOM_USERS: {ROOM_USERS}")
+        print(f"[DISCONNECT] WARNING: {username!r} was not found in any ROOM_USERS list. "
+              f"Current ROOM_USERS: {ROOM_USERS}")
 
 
 if __name__ == '__main__':

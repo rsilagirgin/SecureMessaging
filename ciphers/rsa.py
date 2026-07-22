@@ -68,7 +68,7 @@ def modular_inverse(e: int, phi: int) -> int:
     """e * d ≡ 1 (mod phi) olacak şekilde d'yi bulur."""
     div, x, _ = _extended_gcd(e, phi)
     if div != 1:
-        raise ValueError("Modüler ters bulunamadı: e ve phi aralarında asal değil.")
+        raise ValueError("Modular inverse not found: e and phi are not coprime.")
     return x % phi
 
 
@@ -120,7 +120,7 @@ def encrypt(public_key, plain_text: str):
     n_bytes = _byte_length(n)
     max_block = n_bytes - 11  # PKCS#1 v1.5: 3 byte başlık + en az 8 byte dolgu
     if max_block <= 0:
-        raise ValueError("Anahtar boyutu bu mesajı bloklamak için çok küçük.")
+        raise ValueError("Key size is too small to block this message.")
 
     data = plain_text.encode('utf-8')
     blocks = [data[i:i + max_block] for i in range(0, len(data), max_block)] or [b'']
@@ -154,12 +154,12 @@ def decrypt(private_key, cipher_blocks):
         mb = m.to_bytes(n_bytes, 'big')
 
         if mb[0] != 0 or mb[1] != 2:
-            raise ValueError("Geçersiz PKCS#1 dolgusu (yanlış anahtar veya bozuk veri).")
+            raise ValueError("Invalid PKCS#1 padding (wrong key or corrupted data).")
 
         try:
             sep_index = mb.index(0, 2)
         except ValueError:
-            raise ValueError("Dolgu sonlandırıcı bulunamadı (bozuk veri).")
+            raise ValueError("Padding terminator not found (corrupted data).")
 
         plain_bytes += mb[sep_index + 1:]
 

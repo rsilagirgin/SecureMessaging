@@ -50,7 +50,7 @@ def _get_lib():
 
     if not PYKCS11_AVAILABLE:
         raise RuntimeError(
-            "PyKCS11 paketi kurulu değil. Kurmak için: pip install PyKCS11"
+            "PyKCS11 package is not installed. To install: pip install PyKCS11"
         )
 
     with _lib_lock:
@@ -67,10 +67,10 @@ def _get_lib():
             return _pkcs11
         except Exception as e:
             _lib_load_error = (
-                f"AKİS PKCS#11 kütüphanesi yüklenemedi ({lib_path}). "
-                f"AKİS Kart Yazılımı kurulu mu, kart okuyucu takılı mı kontrol edin. "
-                f"Farklı bir yoldaysa .env dosyasına AKIS_PKCS11_LIB=<tam yol> ekleyin. "
-                f"Ayrıntı: {e}"
+                f"Could not load the AKIS PKCS#11 library ({lib_path}). "
+                f"Check whether the AKIS Card Software is installed and the card reader is plugged in. "
+                f"If it is in a different location, add AKIS_PKCS11_LIB=<full path> to the .env file. "
+                f"Details: {e}"
             )
             raise RuntimeError(_lib_load_error)
 
@@ -166,7 +166,7 @@ def login(slot_id, pin, sid):
             slot_id, PyKCS11.CKF_SERIAL_SESSION | PyKCS11.CKF_RW_SESSION
         )
     except Exception as e:
-        raise RuntimeError(f"Kart okuyucuyla oturum açılamadı: {e}")
+        raise RuntimeError(f"Could not open a session with the card reader: {e}")
 
     try:
         session.login(pin)
@@ -174,13 +174,13 @@ def login(slot_id, pin, sid):
         session.closeSession()
         err = str(e)
         if "CKR_PIN_INCORRECT" in err:
-            raise RuntimeError("Yanlış PIN.")
+            raise RuntimeError("Incorrect PIN.")
         if "CKR_PIN_LOCKED" in err:
-            raise RuntimeError("Kart PIN kilitli. Kartı açmak için AKİS Kart Yazılımı'nı kullanın.")
-        raise RuntimeError(f"Giriş başarısız: {err}")
+            raise RuntimeError("Card PIN is locked. Use the AKIS Card Software to unlock the card.")
+        raise RuntimeError(f"Login failed: {err}")
     except Exception as e:
         session.closeSession()
-        raise RuntimeError(f"Giriş başarısız: {e}")
+        raise RuntimeError(f"Login failed: {e}")
 
     owner_first, owner_last = _extract_owner_name(session)
     try:
@@ -191,7 +191,7 @@ def login(slot_id, pin, sid):
     ACTIVE_SESSIONS[sid] = {"session": session, "slot_id": slot_id}
 
     return {
-        "owner_first": owner_first or "AKİS Kullanıcısı",
+        "owner_first": owner_first or "AKIS User",
         "owner_last": owner_last or "",
         "label": label,
     }

@@ -202,13 +202,13 @@
                    <div style="display: flex; gap: 12px; margin-bottom: 10px;">
     <div style="flex: 1;">
         <label for="firstname">First Name:</label>
-        <input type="text" id="firstname" placeholder="e.g. Sıla" autocomplete="off" required>
+        <input type="text" id="firstname" placeholder="e.g. John" autocomplete="off" required>
     </div>
     <div style="flex: 1;">
       <!-- ✅ 138. Satırın Doğru Hali -->
     <label for="lastname">Last Name:</label>
         <!-- value niteliğinin olmadığından ve placeholder'ın temiz olduğundan emin olalım -->
-       <input type="text" id="lastname" placeholder="e.g. Girgin" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" required>
+       <input type="text" id="lastname" placeholder="e.g. Smith" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" required>
     </div>
 </div>
                 
@@ -229,9 +229,9 @@
                 </div>
 
                 <div id="akis-pin-area" class="akis-pin-area hidden">
-                    <label id="akis-pin-label">PIN Girin:</label>
+                    <label id="akis-pin-label">Enter PIN:</label>
                     <input type="password" id="akis-pin-input" placeholder="PIN" autocomplete="off" inputmode="numeric" maxlength="12">
-                    <button type="button" id="akis-pin-confirm-btn">Kilidi Ac</button>
+                    <button type="button" id="akis-pin-confirm-btn">Unlock</button>
                     <div id="akis-pin-error" class="hidden" style="color:#dc2626; font-size:0.85rem; margin-top:6px; text-align:center;"></div>
                     <div id="akis-pin-attempts" class="akis-pin-attempts hidden"></div>
                 </div>
@@ -367,7 +367,7 @@
     <div class="chat-input-area" id="input-area-wrapper">
     <div id="image-preview-strip" class="hidden" style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:8px 12px; background:#eff6ff; border:1px solid #93c5fd; border-radius:10px;">
     <img id="image-preview-thumb" src="" style="width:48px; height:48px; object-fit:cover; border-radius:6px;">
-    <span style="flex:1; font-size:0.85rem; color:#1e3a8a; font-weight:600;">Fotoğraf gönderilmeye hazır</span>
+    <span style="flex:1; font-size:0.85rem; color:#1e3a8a; font-weight:600;">Photo ready to send</span>
     <button type="button" id="image-preview-remove" style="background:#ef4444; color:#fff; border:none; width:24px; height:24px; border-radius:50%; cursor:pointer; font-weight:700;">✕</button>
 </div>
     <div id="message-input" class="rich-input-container" contenteditable="true"></div>
@@ -411,7 +411,7 @@
 
     <button type="button" id="send-btn">Send</button>
 
-    <button type="button" class="tool-btn" id="photo-btn" title="Fotoğraf Gönder">📷</button>
+    <button type="button" class="tool-btn" id="photo-btn" title="Send Photo">📷</button>
     <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
 
 </div>
@@ -564,7 +564,7 @@ photoFileInput.addEventListener('change', async () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-        showAppNotification('Lütfen bir resim dosyası seçin.', 'error');
+        showAppNotification('Please select an image file.', 'error');
         return;
     }
 
@@ -578,7 +578,7 @@ photoFileInput.addEventListener('change', async () => {
         );
 
         if (dataURL.length > MAX_IMAGE_DATAURL_LENGTH) {
-            showAppNotification('Resim sıkıştırma sonrası hâlâ çok büyük. Lütfen daha küçük bir resim seçin.', 'error', 7000);
+            showAppNotification('Image is still too large after compression. Please choose a smaller image.', 'error', 7000);
             return;
         }
 
@@ -587,8 +587,8 @@ photoFileInput.addEventListener('change', async () => {
         imagePreviewStrip.classList.remove('hidden');
         imagePreviewStrip.style.display = 'flex';
     } catch (e) {
-        console.error('Resim işlenemedi:', e);
-        showAppNotification('Resim işlenirken bir hata oluştu.', 'error');
+        console.error('Image could not be processed:', e);
+        showAppNotification('An error occurred while processing the image.', 'error');
     }
 });
 
@@ -603,10 +603,10 @@ imagePreviewRemove.addEventListener('click', () => {
 function compressImageToDataURL(file, maxWidth, quality) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onerror = () => reject(new Error('Dosya okunamadı'));
+        reader.onerror = () => reject(new Error('Could not read file'));
         reader.onload = () => {
             const img = new Image();
-            img.onerror = () => reject(new Error('Resim yüklenemedi'));
+            img.onerror = () => reject(new Error('Could not load image'));
             img.onload = () => {
                 let { width, height } = img;
                 if (width > maxWidth) {
@@ -683,7 +683,7 @@ function goToChoiceStep() {
         document.getElementById('step-choice').classList.remove('hidden');
         
     } catch (error) {
-        console.error("İsim formatlama hatası:", error);
+        console.error("Name formatting error:", error);
         // Eğer tarayıcı yerel lokali desteklemiyorsa düz fallback yapıya geçsin, uygulama çökmesin:
         firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
         const shortLastName = lastName.charAt(0).toUpperCase() + ".";
@@ -991,7 +991,7 @@ socket.on('akis_slots_error', (data) => {
         if (!pin) return;
 
         akisPinConfirmBtn.disabled = true;
-        akisPinConfirmBtn.textContent = "Confirming...";//Doğrulanıyor…";
+        akisPinConfirmBtn.textContent = "Confirming...";
         akisPinError.classList.add('hidden');
 
         // PIN, sadece bu tek istekte sunucuya gider ve orada C_Login için
@@ -1001,7 +1001,7 @@ socket.on('akis_slots_error', (data) => {
 
     socket.on('akis_login_result', (data) => {
         akisPinConfirmBtn.disabled = false;
-        akisPinConfirmBtn.textContent = "🔓 Kilidi Aç";
+        akisPinConfirmBtn.textContent = "🔓 Unlock";
 
         if (!data.success) {
             akisPinInput.value = "";
@@ -1023,7 +1023,7 @@ socket.on('akis_slots_error', (data) => {
 
         akisPinArea.classList.add('hidden');
         akisCardListWrap.classList.add('hidden');
-        akisScanBtn.textContent = `🔓 ${data.owner_first} — Kart Doğrulandı`;
+        akisScanBtn.textContent = `🔓 ${data.owner_first} — Card Verified`;
         akisScanBtn.disabled = true;
 
         goToChoiceStep();
@@ -1121,8 +1121,8 @@ socket.on('akis_slots_error', (data) => {
             try {
                 await ensureE2EEKeyPair();
             } catch (e) {
-                console.error('E2EE anahtar çifti üretilemedi:', e);
-                showLobbyError('left', 'E2EE anahtarları üretilemedi (tarayıcınız desteklemiyor olabilir).');
+                console.error('E2EE key pair could not be generated:', e);
+                showLobbyError('left', 'E2EE keys could not be generated (your browser may not support this).');
                 return;
             }
         }
@@ -1162,8 +1162,8 @@ socket.on('akis_slots_error', (data) => {
                 await ensureE2EEKeyPair();
                 joinPayload.public_key = myE2EEPublicKeyJWK;
             } catch (e) {
-                console.error('E2EE anahtar çifti üretilemedi:', e);
-                showLobbyError('right', 'E2EE anahtarları üretilemedi (tarayıcınız desteklemiyor olabilir).');
+                console.error('E2EE key pair could not be generated:', e);
+                showLobbyError('right', 'E2EE keys could not be generated (your browser may not support this).');
                 return;
             }
         }
@@ -1196,6 +1196,14 @@ socket.on('akis_slots_error', (data) => {
     });
  
     socket.on('status', (data) => {
+        // 🛡️ hacker_room'a özel broadcast'ler (is_hacker_data:true) sadece
+        // Hacker View'dayken gösterilir; normal odadayken (is_hacker_data
+        // yokken/false) hacker mesajları gösterilmez. Bu, socket'in eski
+        // bir Hacker View oturumundan hacker_room'da "unutulmuş" kalması
+        // durumunda bile sızıntı olmasını engeller (bkz. leave_hacker_room).
+        if (isHacker && !data.is_hacker_data) return;
+        if (!isHacker && data.is_hacker_data) return;
+
         if(!document.getElementById('login-screen').classList.contains('hidden') && !isHacker) { enterChatView(); }
         let chatBox = document.getElementById('chat-box');
         chatBox.innerHTML += `<div class="status-msg-row"><div class="status-msg">${data.msg}</div></div>`;
@@ -1278,8 +1286,8 @@ socket.on('akis_slots_error', (data) => {
                 type: 'image'
             });
         } catch (e) {
-            console.error('Fotoğraf şifrelenemedi:', e);
-            showAppNotification('Fotoğraf gönderilemedi (şifreleme hatası).', 'error');
+            console.error('Photo could not be encrypted:', e);
+            showAppNotification('Photo could not be sent (encryption error).', 'error');
         }
 
         pendingImageDataURL = null;
@@ -1304,8 +1312,8 @@ socket.on('akis_slots_error', (data) => {
                 const payload = await e2eeEncryptMessage(message, roomPublicKeys);
                 encryptedResult = { ciphertext: payload.ciphertext, iv: payload.iv, keys: payload.keys };
             } catch (e) {
-                console.error("E2EE şifreleme hatası:", e);
-                showLobbyError('right', "Mesaj şifrelenemedi: odada henüz kimsenin public key'i yok.");
+                console.error("E2EE encryption error:", e);
+                showLobbyError('right', "Message could not be encrypted: no public keys available in the room yet.");
                 return;
             }
         } else {
@@ -1404,6 +1412,12 @@ function resetChatUIToLobby() {
     document.getElementById('panel-connect').classList.add('hidden');
 
     if (isHacker) {
+        // 🛡️ Sunucu tarafında hâlâ 'hacker_room' Socket.IO odasına üye
+        // kalmayalım diye açıkça çıkış bildiriyoruz. Bu yapılmazsa socket
+        // arka planda hacker_room'da kalır ve normal bir odaya geçtiğimizde
+        // bile "📡 Traffic Alert" gibi hacker'a özel mesajları almaya devam eder.
+        socket.emit('leave_hacker_room');
+
         // Hacker View'dan çıkınca kimlik hatırlanmaz, baştan giriş yapılır.
         isHacker = false;
         globalUsername = "";
@@ -1501,7 +1515,7 @@ if (secureStatus) {
         currentAesKey = await deriveAESKey(currentRoomPIN, data.aes_salt);
         document.getElementById('aes-key-hex-value').innerText = currentAESKeyHex;
     } catch (e) {
-        console.error("AES anahtarı türetilemedi:", e);
+        console.error("AES key could not be derived:", e);
         currentAesKey = null;
     }
 } else {
@@ -1515,7 +1529,7 @@ if (secureStatus) {
             currentRSAPublicKey = parseRSAKey(data.rsa_public);
             currentRSAPrivateKey = parseRSAKey(data.rsa_private);
         } catch (e) {
-            console.error("RSA anahtarları ayrıştırılamadı:", e);
+            console.error("RSA keys could not be parsed:", e);
             currentRSAPublicKey = null;
             currentRSAPrivateKey = null;
         }
@@ -1540,7 +1554,7 @@ if (secureStatus) {
             }
         }
         roomPublicKeys = imported;
-        console.log("E2EE public key dizini güncellendi. Odadaki katılımcı sayısı:", Object.keys(roomPublicKeys).length);
+        console.log("E2EE public key directory updated. Number of participants in the room:", Object.keys(roomPublicKeys).length);
     });
     // 🔒 GÜVENLİ VE UYUMLU DEŞİFRE KARŞILAYICISI
    // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
@@ -1567,7 +1581,7 @@ if (msgDate && msgDate !== lastShownDate) {
     let msgAvatar = data.avatar || "1";
     let avatarHtml = `<img src="/static/avatars/${msgAvatar}.jpg" class="chat-avatar" alt="avatar">`;
     
-    let decryptedOriginal = "[Şifre Çözülemedi]";
+    let decryptedOriginal = "[Could Not Decrypt]";
  
 if (!isHacker) {
  
@@ -1653,8 +1667,8 @@ if (!isHacker) {
     chatBox.innerHTML += `<div class="msg-wrapper ${messageClass}"><div class="msg-item">${messageContent}</div></div>`;
     chatBox.scrollTop = chatBox.scrollHeight;
     } catch (renderError) {
-        console.error("Mesaj render edilirken hata oluştu:", renderError, data);
-        chatBox.innerHTML += `<div class="status-msg-row"><div class="status-msg" style="background:#fee2e2;color:#991b1b;">⚠️ Bir mesaj görüntülenirken hata oluştu (konsolu kontrol edin).</div></div>`;
+        console.error("An error occurred while rendering the message:", renderError, data);
+        chatBox.innerHTML += `<div class="status-msg-row"><div class="status-msg" style="background:#fee2e2;color:#991b1b;">⚠️ An error occurred while displaying a message (check the console).</div></div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 });
@@ -1721,3 +1735,4 @@ document.addEventListener("click", function(e){
 </script>
 </body>
 </html>
+

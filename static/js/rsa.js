@@ -76,7 +76,7 @@ function rsaEncrypt(text, publicKey) {
     const nBytes = rsaByteLength(publicKey.n);
     const maxBlock = nBytes - 11; // 3 byte başlık + en az 8 byte dolgu (PKCS#1 v1.5)
     if (maxBlock <= 0) {
-        console.error("RSA anahtarı bu mesajı bloklamak için çok küçük.");
+        console.error("RSA key is too small to block this message.");
         return [];
     }
 
@@ -110,8 +110,8 @@ function rsaEncrypt(text, publicKey) {
 // encrypt() ile üretilmiş ondalık string dizisini çözüp orijinal metni döner.
 function rsaDecrypt(cipherBlocks, privateKey) {
     if (!cipherBlocks || !privateKey) {
-        console.error("Eksik şifreli veri veya RSA anahtarı.");
-        return "[Şifreli Veri Bozuk veya Eksik]";
+        console.error("Missing encrypted data or RSA key.");
+        return "[Corrupted or Missing Encrypted Data]";
     }
     try {
         const nBytes = rsaByteLength(privateKey.n);
@@ -124,14 +124,14 @@ function rsaDecrypt(cipherBlocks, privateKey) {
             const mb = bigIntToBytes(m, nBytes);
 
             if (mb[0] !== 0x00 || mb[1] !== 0x02) {
-                throw new Error("Geçersiz PKCS#1 dolgusu (yanlış anahtar veya bozuk veri).");
+                throw new Error("Invalid PKCS#1 padding (wrong key or corrupted data).");
             }
             let sepIndex = -1;
             for (let i = 2; i < mb.length; i++) {
                 if (mb[i] === 0x00) { sepIndex = i; break; }
             }
             if (sepIndex === -1) {
-                throw new Error("Dolgu sonlandırıcı bulunamadı (bozuk veri).");
+                throw new Error("Padding terminator not found (corrupted data).");
             }
             const chunk = mb.slice(sepIndex + 1);
             chunks.push(chunk);
@@ -144,7 +144,7 @@ function rsaDecrypt(cipherBlocks, privateKey) {
 
         return new TextDecoder().decode(full);
     } catch (e) {
-        console.error("RSA deşifre hatası:", e);
-        return "[Şifre Çözülemedi - Geçersiz Anahtar]";
+        console.error("RSA decryption error:", e);
+        return "[Could Not Decrypt - Invalid Key]";
     }
 }

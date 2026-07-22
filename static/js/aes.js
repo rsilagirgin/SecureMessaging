@@ -1,4 +1,3 @@
-
 // aes.js — İstemci tarafı AES-GCM şifreleme.
 //
 // Anahtar, oda şifresi (roomPassword) + sunucudan join_confirmed ile
@@ -56,8 +55,8 @@ async function deriveAESKey(roomPassword, saltHex) {
 
 async function encryptData(plainText, aesKey) {
     if (!aesKey) {
-        console.error("AES anahtarı eksik, şifreleme yapılamadı.");
-        throw new Error("AES anahtarı eksik.");
+        console.error("AES key missing, encryption failed.");
+        throw new Error("AES key missing.");
     }
     const enc = new TextEncoder();
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -71,8 +70,8 @@ async function encryptData(plainText, aesKey) {
 
 async function decryptData(ciphertextBase64, ivBase64, aesKey) {
     if (!ciphertextBase64 || !ivBase64 || !aesKey) {
-        console.error("Eksik şifreli veri, IV veya anahtar.");
-        return "[Şifreli Veri Bozuk veya Eksik]";
+        console.error("Missing encrypted data, IV, or key.");
+        return "[Corrupted or Missing Encrypted Data]";
     }
     try {
         const ciphertext = new Uint8Array(atob(ciphertextBase64).split("").map(c => c.charCodeAt(0)));
@@ -82,7 +81,7 @@ async function decryptData(ciphertextBase64, ivBase64, aesKey) {
         );
         return new TextDecoder().decode(decrypted);
     } catch (e) {
-        console.error("Deşifre hatası:", e);
-        return "[Şifre Çözülemedi - Geçersiz Anahtar]";
+        console.error("Decryption error:", e);
+        return "[Could Not Decrypt - Invalid Key]";
     }
 }

@@ -1,4 +1,3 @@
-
 function e2eeBufToBase64(buf) {
     const bytes = new Uint8Array(buf);
     let binary = "";
@@ -55,7 +54,7 @@ async function importE2EEPublicKey(jwk) {
 async function e2eeEncryptMessage(text, recipientsPublicKeys) {
     const usernames = Object.keys(recipientsPublicKeys || {});
     if (usernames.length === 0) {
-        throw new Error("Odada hiçbir alıcının public key'i bulunamadı.");
+        throw new Error("No recipient's public key was found in the room.");
     }
 
     // 1) Tek seferlik (ephemeral) AES-256-GCM oturum anahtarı
@@ -100,7 +99,7 @@ async function e2eeEncryptMessage(text, recipientsPublicKeys) {
 // myPrivateKey: SADECE kendi tarayıcında üretilen, hiç paylaşılmamış private key.
 async function e2eeDecryptMessage(payload, myUsername, myPrivateKey) {
     if (!payload || !payload.keys || !myPrivateKey) {
-        return "[Şifreli Veri Bozuk veya Eksik]";
+        return "[Corrupted or Missing Encrypted Data]";
     }
 
     const myWrappedKey = payload.keys[myUsername];
@@ -109,7 +108,7 @@ async function e2eeDecryptMessage(payload, myUsername, myPrivateKey) {
         // henüz odada değildin (public key'in dağıtım listesinde yoktu),
         // bu yüzden senin için şifrelenmiş bir anahtar zarfı hiç üretilmedi.
         // Sunucu bile bunu "geriye dönük" düzeltemez, çünkü private key'i yok.
-        return "[🔒 Bu mesaj siz odaya katılmadan önce gönderildi, çözülemez]";
+        return "[🔒 This message was sent before you joined the room and cannot be decrypted]";
     }
 
     try {
@@ -132,7 +131,7 @@ async function e2eeDecryptMessage(payload, myUsername, myPrivateKey) {
         );
         return new TextDecoder().decode(plainBuf);
     } catch (e) {
-        console.error("E2EE deşifre hatası:", e);
-        return "[Şifre Çözülemedi - Geçersiz Anahtar]";
+        console.error("E2EE decryption error:", e);
+        return "[Could Not Decrypt - Invalid Key]";
     }
 }
