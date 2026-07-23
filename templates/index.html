@@ -9,6 +9,7 @@
     <script src="{{ url_for('static', filename='js/aes.js') }}"></script>
     <script src="{{ url_for('static', filename='js/rsa.js') }}"></script>
     <script src="{{ url_for('static', filename='js/e2ee.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/akis.js') }}"></script>
     <style>
         .lock-logo { display: inline-block; vertical-align: middle; margin-right: 8px; color: #1e3a8a; }
         #login-screen label { display: block; margin-top: 12px; margin-bottom: 4px; }
@@ -277,7 +278,11 @@
                         <option value="aes">🔑AES</option>
                         <option value="rsa">🔐RSA (Asymmetric Key)</option>
                         <option value="e2ee">🔒 Real End-to-End Encryption (RSA+AES Hybrid)</option>
+                        <option value="akis" id="algo-option-akis" disabled>🪪 AKIS Card Encryption (Real RSA via the Card)</option>
                     </select>
+                    <div id="algo-akis-hint" class="hidden" style="margin-top:6px; font-size:0.8rem; color:#64748b;">
+                        🪪 This room can only be entered by users who log in with their AKIS card.
+                    </div>
                     
                     <button type="button" id="join-btn">Create and Launch Room</button>
                 </div>
@@ -304,6 +309,7 @@
                             <option value="aes">AES</option>
                             <option value="rsa">RSA (Asymmetric Key)</option>
                         <option value="e2ee">🔒 Real End-to-End Encryption (RSA+AES Hybrid)</option>
+                        <option value="akis">🪪 AKIS Card Encryption (Real RSA via the Card)</option>
                         </select>
  
                         <label for="room-pass-join" style="color: #0f172a; margin-top: 10px;">Enter Selected Room Password:</label>
@@ -482,6 +488,10 @@
     let detectedAkisTokens = [];     // backend'den gelen [{ slot_id, label, owner_first, owner_last }]
     let selectedAkisSlotId = null;   // seçilen kartın slot_id'si
     let akisIdentityLocked = false;  // true olunca isim alanları AKIS karttan geldiği için kilitlenir
+
+    // --- 🪪 AKİS ODASI durumu (gerçek kart RSA şifrelemesi) ---
+    let akisLoggedIn = false;        // true olunca kartla aktif bir oturum var demektir
+    let roomAkisPublicKeys = {};     // { username: {value: BigInt, n: BigInt} } - odadaki herkesin kartının GERÇEK public key'i
 
     // 🆕 SEKMELER ARASI GEÇİŞ MOTORU
     function switchChatView(viewType) {
@@ -1012,6 +1022,19 @@ socket.on('akis_slots_error', (data) => {
         }
 
         akisIdentityLocked = true;
+        akisLoggedIn = true;
+
+        // 🪪 Kart doğrulandı: 'akis' şifreleme seçeneğini aktif hale getir
+        // ve kartın zaten kullandığı şifreleme olarak kendinden seçili gelsin.
+        // Diğer algoritmalar da hâlâ seçilebilir durumda kalır; ancak bir
+        // AKİS odasına sadece kartla giriş yapanlar girebilir (server bunu
+        // ayrıca zorunlu kılar).
+        const akisCreateOption = document.getElementById('algo-option-akis');
+        if (akisCreateOption) akisCreateOption.disabled = false;
+        const algoSelectCreateEl = document.getElementById('algo-select-create');
+        if (algoSelectCreateEl) algoSelectCreateEl.value = 'akis';
+        const akisHint = document.getElementById('algo-akis-hint');
+        if (akisHint) akisHint.classList.remove('hidden');
 
         // Kimliği karttan otomatik doldur ve bir sonraki adıma geç.
         document.getElementById('firstname').removeAttribute('readonly');
@@ -1109,6 +1132,10 @@ socket.on('akis_slots_error', (data) => {
  
         if (!roomName) { showLobbyError('left', "Please enter a Room Name!"); return; }
         if (!roomPass) { showLobbyError('left', "Please create or generate a Password!"); return; }
+        if (selectedAlgo === 'akis' && !akisLoggedIn) {
+            showLobbyError('left', "🪪 To create an AKIS card room you must first log in with your AKIS card.");
+            return;
+        }
  
         currentSelectedRoom = roomName;
         currentRoomPIN = roomPass; 
@@ -1146,6 +1173,10 @@ socket.on('akis_slots_error', (data) => {
         if (!currentSelectedRoom) { showLobbyError('right', "Please select a room from the list!"); return; }
         if (userSelectedAlgo.toLowerCase() !== currentRoomAlgo.toLowerCase()) {
             showLobbyError('right', `❌ You are not using the room's encryption protocol! Please set your decryption algorithm to '${currentRoomAlgo.toUpperCase()}'.`);
+            return;
+        }
+        if (userSelectedAlgo === 'akis' && !akisLoggedIn) {
+            showLobbyError('right', "🪪 This room is AKIS-card only. Please log in with your card first.");
             return;
         }
         if (!roomPass) { showLobbyError('right', "Please enter the room password!"); return; }
@@ -1193,6 +1224,34 @@ socket.on('akis_slots_error', (data) => {
         } else {
             showAppNotification(data.msg || 'This room was deleted by its creator.', 'info');
         }
+    });
+
+    // 🪪 Kart fiziksel olarak USB okuyucudan çıkarılınca sunucu bizi zaten
+    // odadan çıkarmıştır (bkz. app.py -> monitor_akis_cards). Burada sadece
+    // arayüzü lobiye döndürüp AKİS kimliğini "kilitsiz" hale getiriyoruz ki
+    // kullanıcı isterse kartı tekrar takıp yeniden giriş yapabilsin.
+    socket.on('akis_card_removed', (data) => {
+        if (!data || data.room_name !== currentSelectedRoom) return;
+        resetChatUIToLobby();
+        showAppNotification('🪪 AKIS card removed — you have been disconnected from the room.', 'error', 7000);
+
+        akisLoggedIn = false;
+        akisIdentityLocked = false;
+        detectedAkisTokens = [];
+        selectedAkisSlotId = null;
+
+        const akisCreateOption = document.getElementById('algo-option-akis');
+        if (akisCreateOption) akisCreateOption.disabled = true;
+        const akisHint = document.getElementById('algo-akis-hint');
+        if (akisHint) akisHint.classList.add('hidden');
+
+        akisScanBtn.disabled = false;
+        akisScanBtn.textContent = "Enter with AKIS card";
+
+        document.getElementById('firstname').value = "";
+        document.getElementById('lastname').value = "";
+        document.getElementById('firstname').removeAttribute('readonly');
+        document.getElementById('lastname').setAttribute('readonly', 'readonly');
     });
  
     socket.on('status', (data) => {
@@ -1271,6 +1330,9 @@ socket.on('akis_slots_error', (data) => {
             } else if (currentRoomAlgo === "e2ee") {
                 const payload = await e2eeEncryptMessage(imgData, roomPublicKeys);
                 imgEncryptedResult = { ciphertext: payload.ciphertext, iv: payload.iv, keys: payload.keys };
+            } else if (currentRoomAlgo === "akis") {
+                const payload = await akisEncryptMessage(imgData, roomAkisPublicKeys);
+                imgEncryptedResult = { ciphertext: payload.ciphertext, iv: payload.iv, keys: payload.keys };
             } else {
                 imgEncryptedResult = await encryptData(imgData, currentAesKey);
             }
@@ -1314,6 +1376,15 @@ socket.on('akis_slots_error', (data) => {
             } catch (e) {
                 console.error("E2EE encryption error:", e);
                 showLobbyError('right', "Message could not be encrypted: no public keys available in the room yet.");
+                return;
+            }
+        } else if (currentRoomAlgo === "akis") {
+            try {
+                const payload = await akisEncryptMessage(message, roomAkisPublicKeys);
+                encryptedResult = { ciphertext: payload.ciphertext, iv: payload.iv, keys: payload.keys };
+            } catch (e) {
+                console.error("AKIS encryption error:", e);
+                showLobbyError('right', "Message could not be encrypted: no AKIS card public keys available in the room yet.");
                 return;
             }
         } else {
@@ -1405,6 +1476,7 @@ function resetChatUIToLobby() {
     myE2EEKeyPair = null;
     myE2EEPublicKeyJWK = null;
     roomPublicKeys = {};
+    roomAkisPublicKeys = {};
     document.getElementById('aes-key-hex-banner').classList.add('hidden');
 
     document.getElementById('step-identity').classList.add('hidden');
@@ -1556,6 +1628,22 @@ if (secureStatus) {
         roomPublicKeys = imported;
         console.log("E2EE public key directory updated. Number of participants in the room:", Object.keys(roomPublicKeys).length);
     });
+
+    // --- 🪪 AKİS ODASI: sunucu, odadaki her kart sahibinin GERÇEK RSA
+    // public key'ini ({value,n}) doğrudan karttan okuyup burada yayınlar.
+    // BigInt'e çevirmek için rsa.js -> parseRSAKey kullanılır (aynı format).
+    socket.on('room_akis_pubkeys', (pubkeysMap) => {
+        const parsed = {};
+        for (const [uname, keyObj] of Object.entries(pubkeysMap || {})) {
+            try {
+                parsed[uname] = parseRSAKey(keyObj);
+            } catch (e) {
+                console.error(`AKIS public key could not be parsed (${uname}):`, e);
+            }
+        }
+        roomAkisPublicKeys = parsed;
+        console.log("AKIS card public key directory updated. Number of participants in the room:", Object.keys(roomAkisPublicKeys).length);
+    });
     // 🔒 GÜVENLİ VE UYUMLU DEŞİFRE KARŞILAYICISI
    // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
 // 🔒 SOKET MESAJ KARŞILAYICI GÜNCELLEMESİ
@@ -1605,6 +1693,16 @@ if (!isHacker) {
             { iv: data.iv, ciphertext: data.encrypted, keys: data.keys },
             globalUsername,
             myE2EEKeyPair ? myE2EEKeyPair.privateKey : null
+        );
+ 
+    } else if (data.algo === "akis") {
+ 
+        // 🪪 GERÇEK AKİS ODASI: sadece BİZE ait zarfı (data.keys[globalUsername])
+        // açabiliriz, ve bunu bile ancak kartımız o an aktif bir oturumdaysa
+        // yapabiliriz (şifre çözme fiziksel olarak kart üzerinde gerçekleşir).
+        decryptedOriginal = await akisDecryptMessage(
+            { iv: data.iv, ciphertext: data.encrypted, keys: data.keys },
+            globalUsername
         );
  
     } else {
@@ -1735,4 +1833,3 @@ document.addEventListener("click", function(e){
 </script>
 </body>
 </html>
-

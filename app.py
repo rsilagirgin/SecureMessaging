@@ -25,6 +25,12 @@ SID_USER_MAP = {}
 # sunucuya gelmez, bu yüzden sunucu E2EE mesajlarını asla çözemez.
 ROOM_PUBKEYS = {}
 
+# 'akis' odalarında kullanıcı adı -> kartın GERÇEK RSA public key'i
+# ({'value','n'}), akis_pkcs11.get_public_key() ile karttan okunur.
+# Private key hiçbir zaman burada tutulmaz; sadece kartın kendisi
+# (PKCS#11 oturumu üzerinden) mesaj çözebilir, bkz. 'akis_decrypt_request'.
+ROOM_AKIS_PUBKEYS = {}
+
 
 @app.route('/')
 def index():
@@ -108,6 +114,29 @@ def handle_akis_logout():
     akis_pkcs11.logout(request.sid)
 
 
+@socketio.on('akis_decrypt_request')
+def handle_akis_decrypt_request(data):
+    """
+    'akis' odasındaki bir mesajın, GÖNDERİCİ tarafından bizim kartımızın
+    public key'iyle sarılmış AES oturum anahtarını, doğrudan kart üzerinde
+    (PKCS#11 C_Decrypt) çözer ve sonucu (base64) istemciye döner.
+
+    Bu bir Socket.IO 'ack' (callback) isteğidir: değer return edilerek
+    istemcinin socket.emit(..., callback) fonksiyonuna iletilir. Şifre
+    çözme işlemi SADECE bu sid için o an açık bir kart oturumu varsa
+    başarılı olur — böylece kart çıkarılınca/oturum kapanınca mesajlar
+    da otomatik olarak okunamaz hale gelir.
+    """
+    blocks = (data or {}).get('blocks') or []
+    try:
+        plain_bytes = akis_pkcs11.decrypt_with_card(request.sid, blocks)
+        return {'success': True, 'key_b64': plain_bytes.decode('utf-8')}
+    except RuntimeError as e:
+        return {'success': False, 'msg': str(e)}
+    except Exception as e:
+        return {'success': False, 'msg': f'Unexpected error: {e}'}
+
+
 @socketio.on('leave_hacker_room')
 def handle_leave_hacker_room():
     """Kullanıcı Hacker View'dan çıktığında istemci bu olayı gönderir.
@@ -137,6 +166,17 @@ def handle_create_room(data):
         aes_salt = generate_room_salt()
     elif algo == "rsa":
         rsa_public, rsa_private = generate_rsa_keypair()
+    elif algo == "akis":
+        # 'akis' odası, kartın ZATEN sahip olduğu RSA anahtarını kullanır
+        # (server burada anahtar üretmez). Bu yüzden sadece o an aktif bir
+        # AKİS kart oturumu olan (PIN ile login olmuş) bağlantılar böyle
+        # bir oda kurabilir.
+        if not akis_pkcs11.is_logged_in(request.sid):
+            emit('error', {
+                'msg': 'To create an AKIS card room you must first log in with your AKIS card.',
+                'side': 'left',
+            })
+            return
 
     if room_name in ACTIVE_ROOMS:
         emit('error', {'msg': 'Room already exists!', 'side': 'left'})
@@ -186,6 +226,17 @@ def handle_join(data):
         emit('error', {'msg': 'Wrong room password!', 'side': 'right'})
         return
 
+    # 🪪 'akis' odaları sadece o an aktif bir AKİS kart oturumu (PIN ile
+    # login olmuş) olan bağlantılara açıktır. Bu kontrol, kullanıcı
+    # ROOM_USERS/ROOM listelerine eklenmeden ÖNCE yapılır ki reddedilen
+    # bir bağlantı odada "hayalet" bir üye olarak kalmasın.
+    if ACTIVE_ROOMS[room_name].get('algo') == 'akis' and not akis_pkcs11.is_logged_in(request.sid):
+        emit('error', {
+            'msg': 'This room is AKIS-card only. Please log in with your card to join.',
+            'side': 'right',
+        })
+        return
+
     # Çakışma önleyici isim motoru
     if room_name not in ROOM_USERS:
         ROOM_USERS[room_name] = []
@@ -231,6 +282,18 @@ def handle_join(data):
         print(f"[E2EE] {internal_name!r} sent a public key -> room={room_name!r}. "
               f"Total public keys in room: {len(ROOM_PUBKEYS[room_name])}")
         emit('room_pubkeys', ROOM_PUBKEYS[room_name], room=room_name)
+
+    # --- 🪪 AKİS ODASI: gönderen tarayıcı değil, sunucu bu public key'i
+    # doğrudan karttan (login sırasında okunmuş haliyle) alır ve odaya
+    # dağıtır. Private key hâlâ kart dışına çıkmaz; sadece kart, mesaj
+    # çözme isteklerini 'akis_decrypt_request' üzerinden karşılayabilir. ---
+    if room.get('algo') == 'akis':
+        akis_public_key = akis_pkcs11.get_public_key(request.sid)
+        if akis_public_key:
+            ROOM_AKIS_PUBKEYS.setdefault(room_name, {})[internal_name] = akis_public_key
+            print(f"[AKIS] {internal_name!r} registered their card's public key -> room={room_name!r}. "
+                  f"Total in room: {len(ROOM_AKIS_PUBKEYS[room_name])}")
+            emit('room_akis_pubkeys', ROOM_AKIS_PUBKEYS[room_name], room=room_name)
 
 
 @socketio.on('message')
@@ -285,6 +348,8 @@ def handle_delete_room(data):
         del ROOM_USERS[room_name]
     if room_name in ROOM_PUBKEYS:
         del ROOM_PUBKEYS[room_name]
+    if room_name in ROOM_AKIS_PUBKEYS:
+        del ROOM_AKIS_PUBKEYS[room_name]
     del ACTIVE_ROOMS[room_name]
 
     print(f"[DELETE_ROOM] Room '{room_name}' deleted. Active rooms: {list(ACTIVE_ROOMS.keys())}")
@@ -315,6 +380,13 @@ def handle_leave(data):
             else:
                 del ROOM_PUBKEYS[room]
 
+        if room in ROOM_AKIS_PUBKEYS and username in ROOM_AKIS_PUBKEYS[room]:
+            del ROOM_AKIS_PUBKEYS[room][username]
+            if ROOM_AKIS_PUBKEYS[room]:
+                emit('room_akis_pubkeys', ROOM_AKIS_PUBKEYS[room], room=room)
+            else:
+                del ROOM_AKIS_PUBKEYS[room]
+
         leave_room(room)
         emit('status', {'msg': f'ℹ️ {username} has left the room.'}, room=room)
 
@@ -325,6 +397,8 @@ def handle_leave(data):
                 print(f"[LEAVE] Room '{room}' deleted because it became empty.")
             if room in ROOM_PUBKEYS:
                 del ROOM_PUBKEYS[room]
+            if room in ROOM_AKIS_PUBKEYS:
+                del ROOM_AKIS_PUBKEYS[room]
             broadcast_rooms()
         else:
             print(f"[LEAVE] Room '{room}' was not deleted because it still has users or "
@@ -366,6 +440,13 @@ def handle_disconnect():
                 else:
                     del ROOM_PUBKEYS[room]
 
+            if room in ROOM_AKIS_PUBKEYS and username in ROOM_AKIS_PUBKEYS[room]:
+                del ROOM_AKIS_PUBKEYS[room][username]
+                if ROOM_AKIS_PUBKEYS[room]:
+                    emit('room_akis_pubkeys', ROOM_AKIS_PUBKEYS[room], room=room)
+                else:
+                    del ROOM_AKIS_PUBKEYS[room]
+
             if len(ROOM_USERS[room]) == 0:
                 del ROOM_USERS[room]
                 if room in ACTIVE_ROOMS:
@@ -373,6 +454,8 @@ def handle_disconnect():
                     print(f"[DISCONNECT] Room '{room}' deleted because it became empty.")
                 if room in ROOM_PUBKEYS:
                     del ROOM_PUBKEYS[room]
+                if room in ROOM_AKIS_PUBKEYS:
+                    del ROOM_AKIS_PUBKEYS[room]
                 broadcast_rooms()
             break
     if not found:
@@ -380,6 +463,98 @@ def handle_disconnect():
               f"Current ROOM_USERS: {ROOM_USERS}")
 
 
+# ===========================================================================
+# 🪪 AKİS KART ÇIKARILMA ALGILAMASI
+#
+# Tarayıcı, kartın fiziksel olarak USB okuyucudan çıkarıldığını KENDİSİ
+# algılayamaz (bkz. dosyanın başındaki AKIS KART İLE GİRİŞ notu — kart
+# tamamen backend'de yönetiliyor). Bu yüzden sunucu, aktif her kart
+# oturumunun bağlı olduğu slot'u periyodik olarak yoklar; kart artık o
+# slotta değilse:
+#   1) PKCS#11 oturumu kapatılır (akis_pkcs11.logout),
+#   2) kullanıcı (varsa) bulunduğu 'akis' odasından SUNUCU tarafında da
+#      çıkarılır (private key zaten kartla birlikte gitti, mesaj çözmeye
+#      devam edemez),
+#   3) istemciye 'akis_card_removed' olayıyla haber verilir ki arayüz
+#      kullanıcıyı lobiye geri döndürsün.
+# ===========================================================================
+
+def _force_leave_akis_room(sid, username, room_name):
+    if room_name in ROOM_USERS and username in ROOM_USERS[room_name]:
+        ROOM_USERS[room_name].remove(username)
+
+    if room_name in ROOM_AKIS_PUBKEYS and username in ROOM_AKIS_PUBKEYS[room_name]:
+        del ROOM_AKIS_PUBKEYS[room_name][username]
+        if ROOM_AKIS_PUBKEYS[room_name]:
+            socketio.emit('room_akis_pubkeys', ROOM_AKIS_PUBKEYS[room_name], room=room_name)
+        else:
+            del ROOM_AKIS_PUBKEYS[room_name]
+
+    # flask_socketio.leave_room() bir istek bağlamı (request context) ister;
+    # arka plan görevinin bunu yoktur, bu yüzden alt seviye python-socketio
+    # server nesnesi doğrudan kullanılır.
+    try:
+        socketio.server.leave_room(sid, room_name)
+    except Exception as e:
+        print(f"[AKIS] sid={sid} leave_room error: {e}")
+
+    socketio.emit('status', {'msg': f'ℹ️ {username} left the room (AKIS card removed).'}, room=room_name)
+    socketio.emit('akis_card_removed', {'room_name': room_name}, room=sid)
+
+    if room_name in ROOM_USERS and len(ROOM_USERS[room_name]) == 0:
+        del ROOM_USERS[room_name]
+        if room_name in ACTIVE_ROOMS:
+            del ACTIVE_ROOMS[room_name]
+            print(f"[AKIS] Room '{room_name}' deleted because it became empty after card removal.")
+        if room_name in ROOM_AKIS_PUBKEYS:
+            del ROOM_AKIS_PUBKEYS[room_name]
+        broadcast_rooms_bg()
+
+
+def broadcast_rooms_bg():
+    """broadcast_rooms() ile aynı işi yapar, ama istek bağlamı olmayan bir
+    arka plan görevinden (background task) çağrılabilir."""
+    safe_rooms = {
+        name: {
+            'algo': info['algo'],
+            'creator': info['creator'],
+            'time': info['time'],
+        }
+        for name, info in ACTIVE_ROOMS.items()
+    }
+    socketio.emit('rooms_list', safe_rooms)
+
+
+def monitor_akis_cards():
+    """Sürekli çalışan arka plan görevi: her ~2 saniyede bir, o an aktif
+    olan tüm AKİS kart oturumlarının slot'unu, hâlâ fiziksel olarak takılı
+    olup olmadığına göre kontrol eder."""
+    while True:
+        socketio.sleep(2)
+        try:
+            present_slots = akis_pkcs11.get_present_slot_ids()
+        except Exception as e:
+            print(f"[AKIS] Card presence check failed: {e}")
+            continue
+
+        for sid in akis_pkcs11.get_active_sids():
+            slot_id = akis_pkcs11.get_slot_for_sid(sid)
+            if slot_id is None or slot_id in present_slots:
+                continue
+
+            print(f"[AKIS] sid={sid} slot={slot_id}: card no longer present, ending session.")
+            akis_pkcs11.logout(sid)
+
+            username = SID_USER_MAP.get(sid)
+            if not username:
+                continue
+
+            for room_name in list(ROOM_USERS.keys()):
+                if username in ROOM_USERS[room_name] and ACTIVE_ROOMS.get(room_name, {}).get('algo') == 'akis':
+                    _force_leave_akis_room(sid, username, room_name)
+
+
 if __name__ == '__main__':
+    socketio.start_background_task(monitor_akis_cards)
     #socketio.run(app, debug=True, port=5000)
     socketio.run(app, debug=True, host='0.0.0.0', port=5000)

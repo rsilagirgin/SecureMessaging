@@ -75,6 +75,37 @@ def _get_lib():
             raise RuntimeError(_lib_load_error)
 
 
+def _extract_public_key(session):
+    """
+    Oturumdaki (login gerektirmeyen) X.509 sertifikasından kartın GERÇEK
+    RSA public key'ini (e, n) okur. Bu, kartın zaten kullandığı asıl
+    şifreleme anahtarıdır — 'akis' oda modu bu anahtarı kullanır.
+
+    Private key hiçbir zaman buradan okunmaz/çıkarılmaz; sadece public
+    kısım (e, n) döner ve serialize_key ile aynı JSON biçiminde
+    ({'value': str(e), 'n': str(n)}) istemciye gönderilebilir.
+
+    Okunamazsa None döner (arayüz bu durumda 'akis' modunu kullanamaz).
+    """
+    if not CRYPTOGRAPHY_AVAILABLE:
+        return None
+    try:
+        cert_objs = session.findObjects(
+            [(PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE)]
+        )
+        if not cert_objs:
+            return None
+        der_bytes = bytes(
+            session.getAttributeValue(cert_objs[0], [PyKCS11.CKA_VALUE])[0]
+        )
+        cert = x509.load_der_x509_certificate(der_bytes, default_backend())
+        public_key = cert.public_key()
+        numbers = public_key.public_numbers()
+        return {"value": str(numbers.e), "n": str(numbers.n)}
+    except Exception:
+        return None
+
+
 def _extract_owner_name(session):
     """
     Oturumdaki (login gerektirmeyen, herkese açık) X.509 sertifikasından
@@ -183,12 +214,17 @@ def login(slot_id, pin, sid):
         raise RuntimeError(f"Login failed: {e}")
 
     owner_first, owner_last = _extract_owner_name(session)
+    public_key = _extract_public_key(session)
     try:
         label = pkcs11.getTokenInfo(slot_id).label.strip()
     except Exception:
         label = f"Slot {slot_id}"
 
-    ACTIVE_SESSIONS[sid] = {"session": session, "slot_id": slot_id}
+    ACTIVE_SESSIONS[sid] = {
+        "session": session,
+        "slot_id": slot_id,
+        "public_key": public_key,
+    }
 
     return {
         "owner_first": owner_first or "AKIS User",
@@ -210,6 +246,97 @@ def logout(sid):
         entry["session"].closeSession()
     except Exception:
         pass
+
+
+def is_logged_in(sid):
+    """Bu socket bağlantısının (sid) şu anda kartla giriş yapmış, aktif bir
+    PKCS#11 oturumu var mı? 'akis' oda moduna giriş/oda kurma izni burada
+    kontrol edilir."""
+    return sid in ACTIVE_SESSIONS
+
+
+def get_public_key(sid):
+    """Bu sid için daha önce login() sırasında karttan okunmuş RSA public
+    key'i ({'value','n'}) döner, yoksa None."""
+    entry = ACTIVE_SESSIONS.get(sid)
+    if not entry:
+        return None
+    return entry.get("public_key")
+
+
+def decrypt_with_card(sid, cipher_blocks):
+    """
+    'akis' odasında bir kullanıcıya sarılmış (kartın public key'iyle RSA
+    ile şifrelenmiş) küçük bir veriyi (AES oturum anahtarı), doğrudan
+    KART ÜZERİNDE (C_Decrypt, CKM_RSA_PKCS) çözer.
+
+    Private key kart dışına ASLA çıkmaz; bu yüzden bu işlem
+    (rsa.py/rsa.js'teki gibi Python/JS içinde değil) sadece kartın
+    fiziksel olarak takılı ve oturumun (PIN ile) açık olduğu backend'de
+    yapılabilir. Oturum kapalıysa/kart yoksa RuntimeError fırlatılır —
+    bu da 'sadece AKİS kartıyla giriş yapanlar mesaj okuyabilir' kuralının
+    kriptografik olarak zorlanmasını sağlar.
+
+    Dönüş: çözülmüş ham bayt dizisi (utf-8 metne decode edilebilir).
+    """
+    entry = ACTIVE_SESSIONS.get(sid)
+    if not entry:
+        raise RuntimeError("There is no active AKIS card session. Please log in with your card again.")
+
+    public_key = entry.get("public_key")
+    if not public_key:
+        raise RuntimeError("The card's public key could not be read.")
+
+    n = int(public_key["n"])
+    n_bytes = (n.bit_length() + 7) // 8
+
+    session = entry["session"]
+    try:
+        priv_objs = session.findObjects(
+            [(PyKCS11.CKA_CLASS, PyKCS11.CKO_PRIVATE_KEY)]
+        )
+        if not priv_objs:
+            raise RuntimeError("No private key found on the card.")
+        priv_key = priv_objs[0]
+        mechanism = PyKCS11.Mechanism(PyKCS11.CKM_RSA_PKCS)
+
+        plain_parts = []
+        for c_str in cipher_blocks:
+            # Ondalık string ciphertext'i, modulus uzunluğunda (n_bytes)
+            # büyük-endian bir bayt dizisine çevir (PKCS#11 ham bayt bekler).
+            c_bytes = int(c_str).to_bytes(n_bytes, "big")
+            decrypted = session.decrypt(priv_key, c_bytes, mechanism)
+            plain_parts.append(bytes(decrypted))
+        return b"".join(plain_parts)
+    except RuntimeError:
+        raise
+    except PyKCS11Error as e:
+        raise RuntimeError(f"Card decryption failed: {e}")
+    except Exception as e:
+        raise RuntimeError(f"Card decryption failed: {e}")
+
+
+def get_present_slot_ids():
+    """Şu anda fiziksel olarak takılı (token present) tüm slot id'lerini
+    döner. Kart çıkarılma algılaması için periyodik olarak çağrılır;
+    kütüphane yüklenemezse (okuyucu bağlı değilse vs.) boş küme döner."""
+    try:
+        pkcs11 = _get_lib()
+        return set(pkcs11.getSlotList(tokenPresent=True))
+    except Exception:
+        return set()
+
+
+def get_active_sids():
+    """Şu anda aktif (login olmuş) bir kart oturumu olan tüm sid'lerin
+    anlık bir kopyasını döner."""
+    return list(ACTIVE_SESSIONS.keys())
+
+
+def get_slot_for_sid(sid):
+    """Bu sid'in login olduğu slot_id'yi döner, oturum yoksa None."""
+    entry = ACTIVE_SESSIONS.get(sid)
+    return entry.get("slot_id") if entry else None
 
 
 def is_available():
